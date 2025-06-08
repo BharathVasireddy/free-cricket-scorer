@@ -12,6 +12,7 @@ import LiveScoringPage from './pages/LiveScoringPage';
 import WinnerPage from './pages/WinnerPage';
 import ScorecardPage from './pages/ScorecardPage';
 import MatchHistoryPage from './pages/MatchHistoryPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -145,6 +146,11 @@ function App() {
             <Route path="/matches" element={
               <ProtectedRoute>
                 <MatchHistoryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             } />
           </Routes>

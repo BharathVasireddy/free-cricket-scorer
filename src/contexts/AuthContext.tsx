@@ -36,6 +36,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: any) => {
+      console.log('🔐 Auth state changed:', {
+        hasUser: !!user,
+        uid: user?.uid,
+        isAnonymous: user?.isAnonymous,
+        email: user?.email,
+        displayName: user?.displayName
+      });
+      
       setCurrentUser(user);
       setIsGuest(user ? user.isAnonymous : false);
       setIsLoading(false);

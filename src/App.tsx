@@ -1,6 +1,6 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import WelcomePage from './pages/WelcomePage';
 import MatchSetupPage from './pages/MatchSetupPage';
@@ -19,8 +19,10 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/" element={<WelcomePage />} />
+            <Route path="/dashboard" element={<WelcomePage />} />
             <Route path="/setup" element={<MatchSetupPage />} />
             <Route path="/toss" element={<TossPage />} />
             <Route path="/players" element={<PlayerSelectionPage />} />

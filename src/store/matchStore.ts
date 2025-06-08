@@ -523,6 +523,18 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       const firstInnings = state.match.innings[0];
       const secondInnings = updatedInnings;
       
+      console.log('🏆 Calculating match winner:', {
+        firstInnings: {
+          battingTeamId: firstInnings.battingTeamId,
+          runs: firstInnings.totalRuns
+        },
+        secondInnings: {
+          battingTeamId: secondInnings.battingTeamId,
+          runs: secondInnings.totalRuns
+        },
+        teams: state.match.teams.map(t => ({ id: t.id, name: t.name }))
+      });
+      
       let winner = '';
       let winMargin = '';
       
@@ -534,19 +546,35 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           ? totalPlayersAvailable  // Single-side: all players can bat
           : totalPlayersAvailable - 1; // Standard: need one batsman left
         const wicketsRemaining = maxPossibleWickets - secondInnings.totalWickets;
-        winner = winningTeam?.name || '';
+        winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${wicketsRemaining} wickets`;
+        
+        console.log('🏆 Second batting team won:', {
+          winningTeam: winningTeam?.name,
+          winner,
+          winMargin
+        });
       } else if (firstInnings.totalRuns > secondInnings.totalRuns) {
         // First batting team won
         const winningTeam = state.match.teams.find(t => t.id === firstInnings.battingTeamId);
         const runMargin = firstInnings.totalRuns - secondInnings.totalRuns;
-        winner = winningTeam?.name || '';
+        winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${runMargin} runs`;
+        
+        console.log('🏆 First batting team won:', {
+          winningTeam: winningTeam?.name,
+          winner,
+          winMargin
+        });
       } else {
         // Match tied
         winner = 'Match Tied';
         winMargin = '';
+        
+        console.log('🏆 Match tied');
       }
+
+      console.log('🏆 Final winner details:', { winner, winMargin });
 
       set({
         match: {
@@ -991,19 +1019,21 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         // Second batting team won
         const winningTeam = state.match.teams.find(t => t.id === secondInnings.battingTeamId);
         const wicketsRemaining = state.match.playersPerTeam - secondInnings.totalWickets - 1;
-        winner = winningTeam?.name || '';
+        winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${wicketsRemaining} wickets`;
       } else if (firstInnings.totalRuns > secondInnings.totalRuns) {
         // First batting team won
         const winningTeam = state.match.teams.find(t => t.id === firstInnings.battingTeamId);
         const runMargin = firstInnings.totalRuns - secondInnings.totalRuns;
-        winner = winningTeam?.name || '';
+        winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${runMargin} runs`;
       } else {
         // Match tied
         winner = 'Match Tied';
         winMargin = '';
       }
+
+      console.log('🏆 Final match result (endInningsEarly):', { winner, winMargin });
 
       set({
         match: {

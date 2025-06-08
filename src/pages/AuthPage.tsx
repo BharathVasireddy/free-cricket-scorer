@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signInAsGuest, signInWithEmail, signUpWithEmail, isLoading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  
+  // Check URL parameter to determine initial mode
+  const urlMode = searchParams.get('mode');
+  const [isLogin, setIsLogin] = useState(urlMode !== 'signup');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
+
+  // Update mode based on URL parameter changes
+  useEffect(() => {
+    if (urlMode === 'signup') {
+      setIsLogin(false);
+    } else if (urlMode === 'signin') {
+      setIsLogin(true);
+    }
+  }, [urlMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +35,7 @@ const AuthPage: React.FC = () => {
       } else {
         await signUpWithEmail(email, password, displayName);
       }
-      navigate('/');
+      navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Authentication failed');
     }
@@ -30,7 +44,7 @@ const AuthPage: React.FC = () => {
   const handleGuestAccess = async () => {
     try {
       await signInAsGuest();
-      navigate('/');
+      navigate('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Failed to continue as guest');
     }
@@ -40,8 +54,11 @@ const AuthPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">🏏 Cricket Scorer</h1>
-          <p className="text-gray-600">Sign in to save your matches privately</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">🏏 Free Cricket Scorer</h1>
+          <p className="text-gray-600">Professional cricket scoring made simple and free</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {isLogin ? 'Sign in to access your matches' : 'Create your free account to get started'}
+          </p>
         </div>
 
         {error && (
@@ -81,15 +98,15 @@ const AuthPage: React.FC = () => {
           {!isLogin && (
             <div>
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
+                Display Name
               </label>
               <input
-                id="displayName"
                 type="text"
+                id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
-                placeholder="Enter your full name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
+                placeholder="Enter your name"
                 required={!isLogin}
               />
             </div>
@@ -97,14 +114,14 @@ const AuthPage: React.FC = () => {
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
+              Email
             </label>
             <input
-              id="email"
               type="email"
+              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
               placeholder="Enter your email"
               required
             />
@@ -115,21 +132,24 @@ const AuthPage: React.FC = () => {
               Password
             </label>
             <input
-              id="password"
               type="password"
+              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cricket-blue focus:border-transparent"
               placeholder="Enter your password"
               required
               minLength={6}
             />
+            {!isLogin && (
+              <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            )}
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-cricket-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-cricket-blue text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-cricket-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
@@ -138,27 +158,45 @@ const AuthPage: React.FC = () => {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or</span>
+              <span className="px-2 bg-white text-gray-500">Or</span>
             </div>
           </div>
 
           <button
             onClick={handleGuestAccess}
             disabled={isLoading}
-            className="w-full mt-4 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-4 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Continue as Guest
+            {isLoading ? 'Please wait...' : 'Continue as Guest'}
           </button>
         </div>
 
         <div className="mt-6 text-center">
-          <div className="text-xs text-gray-500 space-y-1">
-            <div>🔒 <strong>Private Account:</strong> Your matches are saved privately</div>
-            <div>👥 <strong>Guest Mode:</strong> Matches shared in community feed</div>
-          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="text-cricket-blue hover:text-blue-700 text-sm font-medium"
+          >
+            ← Back to Home
+          </button>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            By signing up, you agree to our terms and privacy policy. 
+            <br />
+            Developed by{' '}
+            <a 
+              href="https://cloud9digital.in" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-cricket-blue hover:text-blue-700"
+            >
+              Cloud 9 Digital
+            </a>
+          </p>
         </div>
       </div>
     </div>

@@ -7,9 +7,9 @@ const WelcomePage: React.FC = () => {
   const { currentUser, isLoading, logout, isGuest } = useAuth();
 
   useEffect(() => {
-    // Redirect to auth page if not authenticated
+    // Redirect to landing page if not authenticated (instead of auth page)
     if (!isLoading && !currentUser) {
-      navigate('/auth');
+      navigate('/landing');
     }
   }, [currentUser, isLoading, navigate]);
 
@@ -18,88 +18,147 @@ const WelcomePage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">🏏</div>
-          <p className="text-white text-xl">Loading...</p>
+          <p className="text-white text-xl">Loading Free Cricket Scorer...</p>
         </div>
       </div>
     );
   }
 
   if (!currentUser) {
-    return null; // Will redirect to auth
+    return null; // Will redirect to landing
   }
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/landing');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cricket-green via-green-600 to-green-800 flex flex-col">
-      {/* Header with user info */}
-      <div className="flex justify-between items-center p-6">
-        <div className="text-white">
-          <div className="text-sm opacity-75">Welcome back</div>
-          <div className="font-semibold">
-            {currentUser.isAnonymous ? '👥 Guest User' : `👤 ${currentUser.displayName || currentUser.email}`}
-          </div>
-        </div>
-        <button
-          onClick={logout}
-          className="text-white/75 hover:text-white text-sm font-medium"
-        >
-          Sign Out
-        </button>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header with Branding */}
         <div className="text-center mb-12">
-          <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
-            <span className="text-4xl">🏏</span>
-          </div>
-          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
-            Cricket Scorer
+          <div className="text-8xl mb-4">🏏</div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Free Cricket Scorer
           </h1>
-          <p className="text-green-100 text-xl font-medium">
-            Professional scoring made simple
+          <p className="text-xl text-green-100 mb-6">
+            Professional cricket scoring made simple and free
           </p>
+          <div className="flex items-center justify-center space-x-4 text-green-100">
+            <span className="flex items-center space-x-1">
+              <span>⚡</span>
+              <span>Real-time Scoring</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span>📊</span>
+              <span>Live Statistics</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span>☁️</span>
+              <span>Cloud Sync</span>
+            </span>
+          </div>
         </div>
 
-        <div className="w-full max-w-sm space-y-4">
-          <button
-            onClick={() => navigate('/setup')}
-            className="w-full bg-white text-cricket-green font-bold py-5 px-6 rounded-2xl shadow-2xl hover:bg-gray-50 hover:shadow-3xl transition-all duration-200 transform hover:-translate-y-1"
-          >
-            <div className="flex items-center justify-center space-x-3">
-              <span className="text-xl">🏏</span>
-              <span className="text-lg">Start New Match</span>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => navigate('/matches')}
-            className="w-full bg-transparent text-white font-semibold py-5 px-6 rounded-2xl border-2 border-white/30 hover:bg-white/10 hover:border-white/50 transition-all duration-200"
-          >
-            <div className="flex items-center justify-center space-x-3">
-              <span className="text-xl">📊</span>
-                              <span className="text-lg">{isGuest ? 'Explore Community' : 'My Dashboard'}</span>
-            </div>
-          </button>
+        {/* User Welcome */}
+        <div className="bg-white/10 backdrop-blur rounded-2xl p-6 mb-8 text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Welcome back{isGuest ? ', Guest!' : '!'}
+          </h2>
+          {!isGuest && currentUser?.displayName && (
+            <p className="text-green-100 text-lg mb-4">
+              {currentUser.displayName}
+            </p>
+          )}
+          {isGuest && (
+            <p className="text-yellow-200 text-sm mb-4">
+              🔓 You're in guest mode - matches will be shared publicly
+            </p>
+          )}
+          <div className="flex justify-center space-x-4">
+            {!isGuest && (
+              <button
+                onClick={handleLogout}
+                className="text-white/80 hover:text-white text-sm underline"
+              >
+                Switch Account
+              </button>
+            )}
+            {isGuest && (
+              <button
+                onClick={() => navigate('/auth')}
+                className="bg-yellow-500 text-yellow-900 px-4 py-2 rounded-lg font-medium hover:bg-yellow-400 transition-colors"
+              >
+                Create Account
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Features Footer */}
-      <div className="pb-8 px-6">
-        <div className="max-w-sm mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-            <div className="text-white space-y-3">
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-lg">⚡</span>
-                <span className="text-sm font-medium">Live ball-by-ball scoring</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-lg">📱</span>
-                <span className="text-sm font-medium">Mobile-first design</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-lg">🎯</span>
-                <span className="text-sm font-medium">Custom rules & formats</span>
-              </div>
+        {/* Main Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Start New Match */}
+          <div className="bg-white rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <div className="text-6xl mb-4">🆕</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Start New Match</h3>
+            <p className="text-gray-600 mb-6">
+              Set up teams, players, and format to begin live scoring
+            </p>
+            <button
+              onClick={() => navigate('/setup')}
+              className="bg-cricket-green text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors w-full"
+            >
+              Create Match
+            </button>
+          </div>
+
+          {/* Match History */}
+          <div className="bg-white rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <div className="text-6xl mb-4">📋</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Match History</h3>
+            <p className="text-gray-600 mb-6">
+              View your past matches and detailed scorecards
+            </p>
+            <button
+              onClick={() => navigate('/matches')}
+              className="bg-cricket-blue text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full"
+            >
+              View Matches
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Tips */}
+        <div className="bg-white/10 backdrop-blur rounded-2xl p-8">
+          <h3 className="text-2xl font-bold text-white mb-6 text-center">
+            Quick Tips
+          </h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-4xl mb-3">💡</div>
+              <h4 className="text-lg font-semibold text-white mb-2">Pro Tip</h4>
+              <p className="text-green-100 text-sm">
+                Use keyboard shortcuts during live scoring for faster input
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl mb-3">📱</div>
+              <h4 className="text-lg font-semibold text-white mb-2">Mobile Ready</h4>
+              <p className="text-green-100 text-sm">
+                Works perfectly on your phone - score matches on the go
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl mb-3">🔄</div>
+              <h4 className="text-lg font-semibold text-white mb-2">Auto Save</h4>
+              <p className="text-green-100 text-sm">
+                Your matches are automatically saved as you score
+              </p>
             </div>
           </div>
         </div>

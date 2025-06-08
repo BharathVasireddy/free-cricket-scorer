@@ -167,7 +167,18 @@ export const updateMatchRealtime = async (matchId: string, matchData: Match): Pr
 // Optimized create match function
 export const createMatch = async (matchData: Match, userId?: string, isGuest: boolean = false): Promise<{ matchCode: string; docId: string }> => {
   return withRetry(async () => {
-    console.log('🆕 Creating new match...', { userId, isGuest });
+    console.log('🆕 Creating new match...', { 
+      userId, 
+      isGuest,
+      hasUserId: !!userId,
+      userIdType: typeof userId,
+      userIdValue: userId
+    });
+
+    // Validate input parameters
+    if (!isGuest && !userId) {
+      throw new Error('UserId is required for non-guest users');
+    }
 
     const matchCode = generateMatchCode();
     const matchToSave = sanitizeMatchData({
@@ -180,15 +191,33 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
       updatedAt: Timestamp.now()
     });
 
-    console.log('🔍 Sanitized match data:', Object.keys(matchToSave)); // Debug log
+    console.log('🔍 Match data to save:', {
+      matchCode,
+      userId: matchToSave.userId,
+      isGuest: matchToSave.isGuest,
+      isPublic: matchToSave.isPublic,
+      hasTeams: !!matchToSave.teams,
+      teamsCount: matchToSave.teams?.length
+    });
     
-    const docRef = await addDoc(collection(db, 'matches'), matchToSave);
-    console.log('✅ Match created with ID: ', docRef.id, 'Code:', matchCode);
-    
-    // Clear cache
-    matchesCache.clear();
-    
-    return { matchCode, docId: docRef.id };
+    try {
+      const docRef = await addDoc(collection(db, 'matches'), matchToSave);
+      console.log('✅ Match created with ID: ', docRef.id, 'Code:', matchCode);
+      
+      // Clear cache
+      matchesCache.clear();
+      
+      return { matchCode, docId: docRef.id };
+    } catch (error: any) {
+      console.error('❌ Firestore error details:', {
+        code: error.code,
+        message: error.message,
+        userId: matchToSave.userId,
+        isGuest: matchToSave.isGuest,
+        isPublic: matchToSave.isPublic
+      });
+      throw error;
+    }
   });
 };
 

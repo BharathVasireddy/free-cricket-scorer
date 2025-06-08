@@ -12,16 +12,18 @@ service cloud.firestore {
                   || request.auth == null; // Allow unauthenticated read for public matches
       
       // Allow write access for:
-      // 1. Authenticated users creating their own matches
-      // 2. Users updating their own matches
-      // 3. Guest users creating public matches
+      // 1. Authenticated users creating their own matches (userId must match auth.uid)
+      // 2. Guest users creating public matches (isGuest = true and isPublic = true)
       allow create: if request.auth != null 
-                    && (request.resource.data.userId == request.auth.uid 
-                        || request.resource.data.isGuest == true);
+                    && ((request.resource.data.userId == request.auth.uid && request.resource.data.isGuest == false)
+                        || (request.resource.data.isGuest == true && request.resource.data.isPublic == true));
       
+      // Allow update for:
+      // 1. Authenticated users updating their own matches
+      // 2. Guest users updating guest matches
       allow update: if request.auth != null 
-                    && (resource.data.userId == request.auth.uid 
-                        || request.resource.data.userId == request.auth.uid);
+                    && ((resource.data.userId == request.auth.uid && resource.data.isGuest == false)
+                        || (resource.data.isGuest == true && request.resource.data.isGuest == true));
       
       // Allow delete only for match owners
       allow delete: if request.auth != null 

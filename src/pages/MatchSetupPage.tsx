@@ -113,6 +113,22 @@ const MatchSetupPage: React.FC = () => {
   const handleStartMatch = async () => {
     if (isTeamsValid() && typeof overs === 'number' && typeof playersPerTeam === 'number') {
       try {
+        // Debug logging
+        console.log('🔍 Debug: Creating match with user info:', {
+          currentUser: currentUser,
+          userId: currentUser?.uid,
+          isGuest: isGuest,
+          hasCurrentUser: !!currentUser
+        });
+
+        // Ensure we have a valid user ID if not a guest
+        const userId = isGuest ? null : currentUser?.uid;
+        
+        if (!isGuest && !userId) {
+          console.error('❌ No valid user ID found for non-guest user');
+          throw new Error('Authentication required. Please sign in again.');
+        }
+
         await createMatch({
           teams,
           overs,
@@ -123,7 +139,7 @@ const MatchSetupPage: React.FC = () => {
           currentInning: 1,
           innings: [],
           status: 'active',
-        }, currentUser?.uid, isGuest);
+        }, userId, isGuest);
         navigate('/toss');
       } catch (error) {
         console.error('Failed to create match:', error);

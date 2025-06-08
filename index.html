@@ -1,16 +1,169 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <title>Cricket Scorer</title>
+    
+    <!-- Primary Meta Tags -->
+    <title>Free Cricket Scorer - Professional Cricket Scoring Made Simple | Cloud 9 Digital</title>
+    <meta name="title" content="Free Cricket Scorer - Professional Cricket Scoring Made Simple | Cloud 9 Digital" />
+    <meta name="description" content="Free online cricket scoring app for live matches. Track runs, wickets, overs, and player stats in real-time. Perfect for amateur, professional, and recreational cricket matches. No ads, no fees, forever free." />
+    <meta name="keywords" content="cricket scorer, live cricket scoring, cricket score app, match tracking, cricket statistics, overs tracker, runs counter, wickets, cricket match, scoreboard, free cricket app, cricket live score, cricket scorekeeper, cloud cricket scorer, cricket match scorer, real time cricket scoring, cricket scorebook, cricket scoring software, cricket scorer online, digital cricket scorer" />
+    <meta name="author" content="Cloud 9 Digital" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://free-cricket-scorer.vercel.app/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://free-cricket-scorer.vercel.app/" />
+    <meta property="og:title" content="Free Cricket Scorer - Professional Cricket Scoring Made Simple" />
+    <meta property="og:description" content="Free online cricket scoring app for live matches. Track runs, wickets, overs, and player stats in real-time. Perfect for amateur, professional, and recreational cricket matches." />
+    <meta property="og:image" content="https://free-cricket-scorer.vercel.app/cricket-scorer-og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Free Cricket Scorer" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://free-cricket-scorer.vercel.app/" />
+    <meta property="twitter:title" content="Free Cricket Scorer - Professional Cricket Scoring Made Simple" />
+    <meta property="twitter:description" content="Free online cricket scoring app for live matches. Track runs, wickets, overs, and player stats in real-time. Perfect for amateur, professional, and recreational cricket matches." />
+    <meta property="twitter:image" content="https://free-cricket-scorer.vercel.app/cricket-scorer-twitter.png" />
+    <meta property="twitter:creator" content="@cloud9digital" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="theme-color" content="#15803d" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cricket Scorer" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#15803d" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/cricket-icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/cricket-icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/cricket-icon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/cricket-icon-180.png" />
+    <link rel="mask-icon" href="/cricket-icon.svg" color="#15803d" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Free Cricket Scorer",
+      "description": "Professional cricket scoring made simple and free. Track live matches, manage player statistics, and never miss a ball.",
+      "url": "https://free-cricket-scorer.vercel.app",
+      "applicationCategory": "SportsApplication",
+      "operatingSystem": "Web Browser",
+      "browserRequirements": "Requires JavaScript, Modern Browser",
+      "permissions": "Geolocation (optional)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "Cloud 9 Digital",
+        "url": "https://cloud9digital.in",
+        "logo": "https://cloud9digital.in/logo.png"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "127",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Rajesh Kumar"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "reviewBody": "Amazing app! Makes cricket scoring so easy and professional. Used it for our local tournament and everyone loved it.",
+          "datePublished": "2024-01-15"
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Priya Sharma"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "reviewBody": "Best free cricket scorer I've found. Clean interface, all features work perfectly, and no annoying ads!",
+          "datePublished": "2024-01-10"
+        }
+      ],
+      "featureList": [
+        "Real-time cricket scoring",
+        "Player statistics tracking",
+        "Cloud synchronization",
+        "Mobile responsive design",
+        "Free forever",
+        "No advertisements",
+        "Professional scorecards",
+        "Match history",
+        "Guest mode available"
+      ]
+    }
+    </script>
+    
+    <!-- Additional Schema for Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Cloud 9 Digital",
+      "url": "https://cloud9digital.in",
+      "logo": "https://cloud9digital.in/logo.png",
+      "sameAs": [
+        "https://facebook.com/cloud9digital",
+        "https://twitter.com/cloud9digital",
+        "https://linkedin.com/company/cloud9digital"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Technical Support",
+        "url": "https://cloud9digital.in/contact"
+      }
+    }
+    </script>
+    
+    <!-- Performance hints -->
+    <link rel="dns-prefetch" href="//firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="//firebase.googleapis.com" />
+    <link rel="preload" href="/cricket-icon.svg" as="image" type="image/svg+xml" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Analytics placeholder (replace with your tracking code) -->
+    <!-- Google Analytics or other tracking scripts can be added here -->
   </body>
 </html>

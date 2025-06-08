@@ -247,10 +247,10 @@ const TossPage: React.FC = () => {
           {/* Back Button */}
           <div className="text-center">
             <button
-              onClick={() => navigate('/setup')}
-              className="text-blue-100 hover:text-white text-sm underline"
+              onClick={() => navigate(-1)}
+              className="text-blue-100 hover:text-white text-sm underline touch-target"
             >
-              ← Back to Setup
+              ← Back
             </button>
           </div>
         </div>

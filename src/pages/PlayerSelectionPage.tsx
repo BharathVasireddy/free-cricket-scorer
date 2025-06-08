@@ -65,10 +65,10 @@ const PlayerSelectionPage: React.FC = () => {
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <button
-          onClick={() => navigate('/toss')}
-          className="text-white/80 hover:text-white text-sm font-medium"
+          onClick={() => navigate(-1)}
+          className="text-white/80 hover:text-white text-sm font-medium touch-target"
         >
-          ← Back to Toss
+          ← Back
         </button>
         <h1 className="text-white text-lg font-bold">Select Players</h1>
         <div className="w-16"></div>

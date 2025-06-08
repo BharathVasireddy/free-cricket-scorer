@@ -7,15 +7,19 @@
   body {
     @apply bg-gray-50 text-gray-900 font-sans;
   }
+
+  html {
+    font-family: system-ui, sans-serif;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-cricket-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors;
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
   }
   
   .btn-danger {
@@ -37,6 +41,49 @@
   .input-field {
     @apply border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cricket-blue focus:border-transparent;
 }
+
+  /* Touch-friendly targets for mobile app experience */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+    touch-action: manipulation; /* Improves tap responsiveness */
+  }
+
+  /* App-like button styles */
+  .app-button {
+    @apply touch-target rounded-xl font-medium transition-all duration-200 active:scale-95;
+    -webkit-tap-highlight-color: transparent; /* Remove iOS blue highlight */
+  }
+
+  /* Remove default button styles on mobile */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Smooth scrolling for mobile */
+  .scroll-smooth {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* App-like transitions */
+  .page-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Mobile-optimized text selection */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Better focus states for accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
 }
 
 /* Coin Flip Animation */

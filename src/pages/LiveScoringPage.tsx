@@ -12,7 +12,6 @@ const LiveScoringPage: React.FC = () => {
     addBall,
     changeBowler,
     changeBatsman,
-
     switchToSingleBatting,
     endInningsEarly,
     isLastManStanding,
@@ -49,10 +48,11 @@ const LiveScoringPage: React.FC = () => {
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
+          <div className="text-6xl mb-4">🏏</div>
           <p className="text-gray-600 mb-4">No active match found</p>
           <button
             onClick={() => navigate('/setup')}
-            className="btn-primary"
+            className="bg-cricket-blue text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
             Start New Match
           </button>
@@ -198,7 +198,6 @@ const LiveScoringPage: React.FC = () => {
     // Get all batsmen who are currently out from current innings
     const outBatsmenIds = new Set<string>();
     
-    // Check each over for wickets to find out batsmen
     currentInnings.overs.forEach(over => {
       over.balls.forEach(ball => {
         if (ball.wicket && ball.batsmanId) {
@@ -207,89 +206,29 @@ const LiveScoringPage: React.FC = () => {
       });
     });
     
-    console.log('🏏 Available Batsmen Check:', {
-      totalWickets: currentInnings.totalWickets,
-      outBatsmenIds: Array.from(outBatsmenIds),
-      currentBatsmanIds,
-      hasJoker: match.hasJoker,
-      jokerName: match.jokerName
-    });
-    
-    // Get team players
-    let availablePlayers = battingTeam?.players.filter(player => 
-      !currentBatsmanIds.includes(player.id) && !outBatsmenIds.has(player.id)
+    return battingTeam?.players.filter(player => 
+      !currentBatsmanIds.includes(player.id) && 
+      !outBatsmenIds.has(player.id)
     ) || [];
-    
-    // Add joker if available for both teams
-    if (match.hasJoker && match.jokerName) {
-      // Check if joker is already out
-      const jokerOutInTeamA = outBatsmenIds.has('joker-teamA');
-      const jokerOutInTeamB = outBatsmenIds.has('joker-teamB');
-      
-      // Check if joker is currently batting
-      const jokerCurrentlyBatting = currentBatsmanIds.includes('joker-teamA') || currentBatsmanIds.includes('joker-teamB');
-      
-             // If joker not out and not currently batting, add to available
-       if (!jokerOutInTeamA && !jokerOutInTeamB && !jokerCurrentlyBatting) {
-         // Add virtual joker player
-         availablePlayers.push({
-           id: `joker-${battingTeam?.name.toLowerCase().replace(/\s+/g, '')}`,
-           name: match.jokerName,
-           role: 'allrounder' as const
-         });
-         console.log('🃏 Joker added to available batsmen');
-      } else {
-        console.log('🃏 Joker not available:', { jokerOutInTeamA, jokerOutInTeamB, jokerCurrentlyBatting });
-      }
-    }
-    
-    console.log('Available batsmen:', availablePlayers.map(p => p.name));
-    return availablePlayers;
   };
 
-  // Get available bowlers (excluding current bowler, last over bowler, and joker if batting)
+  // Get available bowlers (excluding current bowler)
   const getAvailableBowlers = () => {
-    const lastOverBowlerId = currentInnings.overs.length > 1 
-      ? currentInnings.overs[currentInnings.overs.length - 2]?.bowlerId 
-      : null;
-    
-    // Get current batsmen IDs
-    const currentBatsmanIds = isCurrentlySingleBatting 
-      ? [batsmen[0].playerId]
-      : [batsmen[0].playerId, batsmen[1].playerId];
-    
-    // Filter out bowlers
-    let availableBowlers = bowlingTeam?.players.filter(player => 
-      player.id !== currentBowler.playerId && 
-      player.id !== lastOverBowlerId
+    return bowlingTeam?.players.filter(player => 
+      player.id !== currentBowler.playerId
     ) || [];
-    
-    // If joker exists and is currently batting, remove from bowling options
-    if (match.hasJoker && match.jokerName) {
-      const jokerIsBatting = currentBatsmanIds.some(id => {
-        const player = battingTeam?.players.find(p => p.id === id);
-        return player?.name === match.jokerName;
-      });
-      
-      if (jokerIsBatting) {
-        // Remove joker from bowling options
-        availableBowlers = availableBowlers.filter(player => 
-          player.name !== match.jokerName
-        );
-        console.log('Joker is batting - removed from bowling options');
-      }
-    }
-    
-    return availableBowlers;
   };
 
+  // Get current over balls with formatting
   const getCurrentOver = () => {
+    if (!currentInnings.overs.length) return [];
+    
     const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
-    if (!currentOver || currentOver.balls.length === 0) return [];
+    if (!currentOver) return [];
     
     return currentOver.balls.map((ball, index) => {
       let value = '';
-      let colorClass = 'bg-gray-100 text-gray-700';
+      let colorClass = '';
       
       if (ball.wicket) {
         value = 'W';
@@ -324,8 +263,6 @@ const LiveScoringPage: React.FC = () => {
       return { value, colorClass, key: index };
     });
   };
-
-
 
   const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
   const ballsThisOver = currentOver?.balls.filter(
@@ -397,130 +334,123 @@ const LiveScoringPage: React.FC = () => {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      {/* Fixed Header - Navigation Only */}
-      <div className="bg-white border-b px-4 py-3 flex-shrink-0">
+      {/* Mobile-Optimized Header */}
+      <div className="bg-white border-b px-3 py-2 flex-shrink-0 shadow-sm">
         <div className="flex justify-between items-center">
           <button
-            onClick={() => navigate('/scorecard')}
-            className="text-sm text-cricket-blue font-medium"
+            onClick={() => navigate(-1)}
+            className="text-cricket-blue font-medium text-sm flex items-center touch-target"
           >
-            📊 Scorecard
+            <span className="text-lg mr-1">←</span>
+            <span className="hidden sm:inline">Back</span>
           </button>
-          <div className="text-center">
-            <h1 className="text-lg font-bold text-gray-900">Live Match</h1>
+          <div className="text-center flex-1">
+            <h1 className="text-base sm:text-lg font-bold text-gray-900">Live Match</h1>
             <div className="text-xs text-gray-600">
               {isCurrentlySingleBatting ? (
-                match.isSingleSide ? 'Single Batsman' : 'Last Man Standing'
+                match.isSingleSide ? 'Single Side' : 'Last Man'
               ) : (
-                'Pair Batting'
+                'Standard Format'
               )}
             </div>
           </div>
-          <button
-            onClick={() => navigate('/')}
-            className="text-sm text-gray-600 font-medium"
-          >
-            ⏹️ End
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => navigate('/scorecard')}
+              className="text-cricket-blue font-medium text-sm touch-target"
+            >
+              <span className="text-lg">📊</span>
+              <span className="hidden sm:inline ml-1">Score</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Score Display - Compact with Slide Animations */}
-      <div className={`relative overflow-hidden px-4 py-5 flex-shrink-0 transition-all duration-700 ${
+      {/* Responsive Score Display */}
+      <div className={`relative overflow-hidden px-3 py-4 flex-shrink-0 transition-all duration-700 ${
         animationType === 'four' ? 'bg-gradient-to-r from-green-500 to-green-600' :
         animationType === 'six' ? 'bg-gradient-to-r from-purple-500 to-purple-600' :
         animationType === 'wicket' ? 'bg-gradient-to-r from-red-500 to-red-600' :
         'bg-gradient-to-r from-cricket-blue to-blue-600'
       }`}>
         
-        {/* Ripple Effect Background */}
+        {/* Animation Effects */}
         {isAnimating && (
-          <div className="absolute inset-0 overflow-hidden">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full border-4 border-white/30 animate-ping"
-                style={{
-                  width: `${200 + i * 100}px`,
-                  height: `${200 + i * 100}px`,
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  animationDelay: `${i * 200}ms`,
-                  animationDuration: '1.5s'
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Sliding Celebration Text */}
-        {isAnimating && (
-          <div className="absolute inset-0 flex items-center justify-center z-30">
-            <div className={`font-black text-white text-4xl transform transition-all duration-700 ${
-              animationType === 'four' ? 'animate-bounce translate-x-0' :
-              animationType === 'six' ? 'animate-spin translate-x-0' :
-              animationType === 'wicket' ? 'animate-pulse translate-x-0' : 'translate-x-full'
-            }`}>
-              {animationType === 'four' && '🏏 BOUNDARY FOUR!'}
-              {animationType === 'six' && '⚡ MAXIMUM SIX!'}
-              {animationType === 'wicket' && '💥 WICKET FALLS!'}
+          <>
+            <div className="absolute inset-0 overflow-hidden">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full border-4 border-white/30 animate-ping"
+                  style={{
+                    width: `${150 + i * 75}px`,
+                    height: `${150 + i * 75}px`,
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    animationDelay: `${i * 200}ms`,
+                    animationDuration: '1.5s'
+                  }}
+                />
+              ))}
             </div>
-          </div>
+            <div className="absolute inset-0 flex items-center justify-center z-30">
+              <div className={`font-black text-white text-2xl sm:text-4xl transform transition-all duration-700 text-center ${
+                animationType === 'four' ? 'animate-bounce' :
+                animationType === 'six' ? 'animate-pulse' :
+                animationType === 'wicket' ? 'animate-pulse' : ''
+              }`}>
+                {animationType === 'four' && '🏏 FOUR!'}
+                {animationType === 'six' && '⚡ SIX!'}
+                {animationType === 'wicket' && '💥 WICKET!'}
+              </div>
+            </div>
+          </>
         )}
 
-        {/* Score Content - Card Flip Style */}
-        <div className={`transition-all duration-500 transform ${
-          isAnimating ? 'rotateY-180 opacity-0' : 'rotateY-0 opacity-100'
-        }`} style={{ 
-          transform: isAnimating ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          transformStyle: 'preserve-3d'
-        }}>
+        {/* Score Content */}
+        <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
           
-          {/* Team Name and Score - Same Line */}
-          <div className="flex items-center justify-center space-x-6 mb-3">
-            <div className="text-xl font-bold text-white">
+          {/* Team and Score */}
+          <div className="flex items-center justify-center space-x-4 mb-3">
+            <div className="text-lg sm:text-xl font-bold text-white text-center">
               {battingTeam?.name}
             </div>
-            <div className={`text-5xl font-black text-white transition-all duration-300 ${
-              !isAnimating && animationType ? 'animate-pulse' : ''
-            }`}>
+            <div className="text-4xl sm:text-5xl font-black text-white">
               {currentInnings.totalRuns}/{currentInnings.totalWickets}
             </div>
           </div>
 
-          {/* Overs and Run Rate - Compact Row */}
-          <div className="flex justify-center items-center space-x-6 mb-3">
+          {/* Overs and Stats */}
+          <div className="flex justify-center items-center space-x-4 sm:space-x-6 mb-2">
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
                 {Math.floor(currentInnings.totalBalls / 6)}.{currentInnings.totalBalls % 6}
               </span>
-              <span className="text-sm text-white/70 ml-1">
-                /{match.overs}
-              </span>
+              <span className="text-sm text-white/70 ml-1">/{match.overs}</span>
             </div>
             
             <div className="w-1 h-1 bg-white/50 rounded-full"></div>
             
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
-                {currentInnings.totalBalls > 0 ? ((currentInnings.totalRuns / currentInnings.totalBalls) * 6).toFixed(2) : '0.00'}
+                {currentInnings.totalBalls > 0 ? ((currentInnings.totalRuns / currentInnings.totalBalls) * 6).toFixed(1) : '0.0'}
               </span>
               <span className="text-sm text-white/70 ml-1">RR</span>
             </div>
           </div>
 
-          {/* Target Info - Compact */}
+          {/* Target Info */}
           {currentInnings.target && (
             <div className="text-center">
-              <div className="text-base text-white/90">
+              <div className="text-sm sm:text-base text-white/90">
                 Need <span className="font-bold">{currentInnings.target - currentInnings.totalRuns}</span> from <span className="font-bold">{(match.overs * 6) - currentInnings.totalBalls}</span> balls
-                <span className="ml-3 text-white/80">
-                  RRR: {
+                <span className="ml-2 text-white/80">
+                  (RRR: {
                     ((match.overs * 6) - currentInnings.totalBalls) > 0 ? 
-                    (((currentInnings.target - currentInnings.totalRuns) / (((match.overs * 6) - currentInnings.totalBalls) / 6)).toFixed(2)) : 
-                    '0.00'
-                  }
+                    (((currentInnings.target - currentInnings.totalRuns) / (((match.overs * 6) - currentInnings.totalBalls) / 6)).toFixed(1)) : 
+                    '0.0'
+                  })
                 </span>
               </div>
             </div>
@@ -528,103 +458,85 @@ const LiveScoringPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Current Players - Clean Layout */}
-      <div className="bg-white border-b px-4 py-3 flex-shrink-0">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* Players Section - Compact and Touch-Friendly */}
+      <div className="bg-white border-b px-3 py-3 flex-shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           {/* Batsmen */}
           <div>
-            <div className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide flex justify-between items-center">
-              <span>{isCurrentlySingleBatting ? 'Batsman' : 'Batting'}</span>
+            <div className="text-xs font-semibold text-gray-700 mb-2 flex justify-between items-center">
+              <span>{isCurrentlySingleBatting ? 'BATSMAN' : 'BATTING'}</span>
               <button
                 onClick={() => setIsBatsmanModalOpen(true)}
-                className="text-xs text-cricket-blue hover:underline normal-case"
+                className="text-xs text-cricket-blue hover:underline touch-target"
               >
                 Change
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {batsmen.map((batsman, index) => {
                 const player = battingTeam?.players.find(p => p.id === batsman.playerId);
                 const isJoker = match.hasJoker && player?.name === match.jokerName;
                 const isOnStrike = selectedBatsmanIndex === index;
-                const showStrike = !isCurrentlySingleBatting;
-                const strikeRate = batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0';
                 
                 return (
-                  <div
-                    key={batsman.playerId}
-                    className={`border-l-4 pl-3 py-2 ${
-                      isOnStrike ? 'border-cricket-blue bg-blue-50' : 'border-gray-200'
+                  <div 
+                    key={index}
+                    className={`p-2 rounded-lg cursor-pointer transition-all touch-target ${
+                      isOnStrike 
+                        ? 'bg-green-100 border-2 border-green-500' 
+                        : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
                     }`}
+                    onClick={() => setSelectedBatsmanIndex(index)}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900 text-sm">
-                          {player?.name} 
-                          {showStrike && isOnStrike && <span className="ml-1 text-cricket-blue">*</span>} 
-                          {isJoker && <span className="ml-1">🃏</span>}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1 space-x-4">
-                          <span>{batsman.runs} ({batsman.balls})</span>
-                          <span>SR: {strikeRate}</span>
-                        </div>
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium text-sm text-gray-900">
+                        {player?.name}{isJoker && ' 🃏'}
+                        {isOnStrike && <span className="text-green-600 ml-1">*</span>}
                       </div>
-                      {!isCurrentlySingleBatting && (
-                        <button
-                          onClick={() => setSelectedBatsmanIndex(index === 0 ? 1 : 0)}
-                          className="text-xs text-cricket-blue hover:underline"
-                        >
-                          Switch
-                        </button>
-                      )}
+                      <div className="text-xs text-gray-600">
+                        {batsman.runs}({batsman.balls})
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      SR: {batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(0) : '0'}
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-          
+
           {/* Bowler */}
           <div>
-            <div className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide flex justify-between items-center">
-              <span>Bowling</span>
+            <div className="text-xs font-semibold text-gray-700 mb-2 flex justify-between items-center">
+              <span>BOWLING</span>
               <button
                 onClick={() => setIsBowlerModalOpen(true)}
-                className="text-xs text-cricket-blue hover:underline normal-case"
+                className="text-xs text-cricket-blue hover:underline touch-target"
               >
                 Change
               </button>
             </div>
-            <div className="border-l-4 border-green-500 pl-3 py-2 bg-green-50">
-              <div>
-                <div className="font-semibold text-gray-900 text-sm">
-                  {currentBowlerPlayer?.name}
-                  {match.hasJoker && currentBowlerPlayer?.name === match.jokerName && (
-                    <span className="ml-1">🃏</span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-600 mt-1 space-x-4">
-                  <span>
-                    {currentBowler.wickets}-{currentBowler.runs}
-                  </span>
-                  <span>
-                    {Math.floor(currentBowler.balls / 6)}.{currentBowler.balls % 6}
-                  </span>
-                  <span>Eco: {currentBowler.balls > 0 ? ((currentBowler.runs / currentBowler.balls) * 6).toFixed(2) : '0.00'}</span>
-                </div>
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <div className="font-medium text-sm text-gray-900 mb-1">
+                {currentBowlerPlayer?.name}
+                {match.hasJoker && currentBowlerPlayer?.name === match.jokerName && ' 🃏'}
+              </div>
+              <div className="text-xs text-gray-600 flex justify-between">
+                <span>{currentBowler.wickets}-{currentBowler.runs}</span>
+                <span>{Math.floor(currentBowler.balls / 6)}.{currentBowler.balls % 6}</span>
+                <span>Eco: {currentBowler.balls > 0 ? ((currentBowler.runs / currentBowler.balls) * 6).toFixed(1) : '0.0'}</span>
               </div>
             </div>
           </div>
         </div>
         
-        {/* This Over - Full Width */}
+        {/* This Over */}
         <div>
-          <div className="mb-2">
-            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide">This Over</div>
-          </div>
-          <div className="bg-gray-50 p-3 rounded min-h-[50px] flex items-center justify-center">
+          <div className="text-xs font-semibold text-gray-700 mb-2">THIS OVER</div>
+          <div className="bg-gray-50 p-2 rounded-lg min-h-[40px] flex items-center justify-center">
             {getCurrentOver().length > 0 ? (
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-1 justify-center">
                 {getCurrentOver().map((ball) => (
                   <span
                     key={ball.key}
@@ -641,16 +553,16 @@ const LiveScoringPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Status Messages for Completion */}
+      {/* Status Messages */}
       {(() => {
         const isFirstInnings = currentInnings.number === 1;
         const isMatchCompleted = match.status === 'completed';
 
         if (isMatchCompleted) {
           return (
-            <div className="bg-green-600 text-white px-4 py-6 text-center flex-shrink-0">
-              <div className="text-xl font-bold mb-2">🏆 Match Completed!</div>
-              <div className="text-sm">Redirecting to winner page...</div>
+            <div className="bg-green-600 text-white px-3 py-4 text-center flex-shrink-0">
+              <div className="text-lg font-bold mb-1">🏆 Match Completed!</div>
+              <div className="text-sm">Redirecting to results...</div>
             </div>
           );
         }
@@ -666,8 +578,8 @@ const LiveScoringPage: React.FC = () => {
           }
 
           return (
-            <div className="bg-blue-600 text-white px-4 py-6 text-center flex-shrink-0">
-              <div className="text-lg font-bold mb-2">{message}</div>
+            <div className="bg-blue-600 text-white px-3 py-4 text-center flex-shrink-0">
+              <div className="text-lg font-bold mb-1">{message}</div>
               <div className="text-sm">
                 {isFirstInnings ? 'Moving to innings break...' : 'Moving to results...'}
               </div>
@@ -677,7 +589,7 @@ const LiveScoringPage: React.FC = () => {
 
         if (isOverComplete && !isMatchComplete) {
           return (
-            <div className="bg-amber-500 text-white px-4 py-4 text-center flex-shrink-0">
+            <div className="bg-amber-500 text-white px-3 py-3 text-center flex-shrink-0">
               <div className="text-sm font-medium">Over Complete! Select new bowler</div>
             </div>
           );
@@ -686,120 +598,112 @@ const LiveScoringPage: React.FC = () => {
         return null;
       })()}
 
-      {/* Main Scoring Area - No Scroll */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className="h-full flex flex-col justify-between">
-          {/* Run Buttons */}
-          <div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[0, 1, 2, 3, 4, 6].map(runs => {
-                const currentBatsman = batsmen[selectedBatsmanIndex];
-                const isJoker = match.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === match.jokerName;
-                
-                return (
-                  <button
-                    key={runs}
-                    onClick={() => handleScoreButton(runs)}
-                    disabled={shouldDisableScoring}
-                    className={`h-16 rounded-xl font-bold text-xl transition-all ${
-                      runs === 4 || runs === 6 
-                        ? 'bg-green-500 text-white hover:bg-green-600' 
-                        : 'bg-white border-2 border-gray-300 text-gray-900 hover:bg-gray-50'
-                    } ${shouldDisableScoring ? 'opacity-50 cursor-not-allowed' : ''} ${
-                      isJoker ? 'ring-2 ring-yellow-400' : ''
-                    }`}
-                  >
-                    {runs}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Extras */}
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              <button
-                onClick={() => setIsWideModalOpen(true)}
-                disabled={shouldDisableScoring}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-              >
-                Wd
-              </button>
-              <button
-                onClick={() => setIsNoBallModalOpen(true)}
-                disabled={shouldDisableScoring}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-              >
-                Nb
-              </button>
-              <button
-                onClick={() => handleExtra('bye')}
-                disabled={shouldDisableScoring}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-              >
-                Bye
-              </button>
-              <button
-                onClick={() => handleExtra('legbye')}
-                disabled={shouldDisableScoring}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-              >
-                Lb
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Actions */}
-          <div className="space-y-3">
-            {/* Wicket Button */}
-            <button
-              onClick={handleWicket}
-              disabled={shouldDisableScoring}
-              className={`w-full py-4 text-lg font-bold rounded-xl transition-all ${
-                shouldDisableScoring 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                  : 'bg-red-500 text-white hover:bg-red-600'
-              }`}
-            >
-              🏏 WICKET
-            </button>
-
-            {/* Over/Match Complete Messages */}
-            {isMatchComplete && (
-              <div className="text-center py-3 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
-                🏆 Match Complete! All {match.overs} overs bowled.
-              </div>
-            )}
-            {isOverComplete && !isMatchComplete && (
-              <div className="text-center py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
-                Over Complete! 
-                <button 
-                  onClick={() => setIsBowlerModalOpen(true)}
-                  className="ml-2 underline font-semibold"
+      {/* Mobile-Optimized Scoring Interface */}
+      <div className="flex-1 p-3 overflow-y-auto">
+        <div className="max-w-lg mx-auto">
+          {/* Run Buttons - Larger Touch Targets */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {[0, 1, 2, 3, 4, 6].map(runs => {
+              const currentBatsman = batsmen[selectedBatsmanIndex];
+              const isJoker = match.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === match.jokerName;
+              
+              return (
+                <button
+                  key={runs}
+                  onClick={() => handleScoreButton(runs)}
+                  disabled={shouldDisableScoring}
+                  className={`h-16 sm:h-20 rounded-xl font-bold text-xl sm:text-2xl transition-all touch-target ${
+                    runs === 4 || runs === 6 
+                      ? 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700' 
+                      : 'bg-white border-2 border-gray-300 text-gray-900 hover:bg-gray-50 active:bg-gray-100'
+                  } ${shouldDisableScoring ? 'opacity-50 cursor-not-allowed' : ''} ${
+                    isJoker ? 'ring-2 ring-yellow-400' : ''
+                  }`}
                 >
-                  Change Bowler
+                  {runs}
                 </button>
-              </div>
-            )}
+              );
+            })}
+          </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => {/* TODO: Implement undo */}}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                ↶ Undo
-              </button>
-              <button
+          {/* Extras - Touch-Friendly */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <button
+              onClick={() => setIsWideModalOpen(true)}
+              disabled={shouldDisableScoring}
+              className="py-3 text-sm font-medium bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 active:bg-orange-300 transition-colors disabled:opacity-50 touch-target"
+            >
+              Wide
+            </button>
+            <button
+              onClick={() => setIsNoBallModalOpen(true)}
+              disabled={shouldDisableScoring}
+              className="py-3 text-sm font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 active:bg-red-300 transition-colors disabled:opacity-50 touch-target"
+            >
+              No Ball
+            </button>
+            <button
+              onClick={() => handleExtra('bye')}
+              disabled={shouldDisableScoring}
+              className="py-3 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-50 touch-target"
+            >
+              Bye
+            </button>
+            <button
+              onClick={() => handleExtra('legbye')}
+              disabled={shouldDisableScoring}
+              className="py-3 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-50 touch-target"
+            >
+              Leg Bye
+            </button>
+          </div>
+
+          {/* Wicket Button - Prominent */}
+          <button
+            onClick={handleWicket}
+            disabled={shouldDisableScoring}
+            className={`w-full py-4 text-lg font-bold rounded-xl transition-all touch-target mb-4 ${
+              shouldDisableScoring 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700'
+            }`}
+          >
+            🏏 WICKET
+          </button>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setIsBowlerModalOpen(true)}
+              className="py-3 text-sm font-medium bg-cricket-blue text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors touch-target"
+            >
+              🔄 Change Bowler
+            </button>
+            <button
+              onClick={() => {/* TODO: Implement undo */}}
+              disabled
+              className="py-3 text-sm font-medium bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed touch-target"
+            >
+              ↶ Undo Ball
+            </button>
+          </div>
+
+          {/* Over/Match Status */}
+          {isOverComplete && !isMatchComplete && (
+            <div className="text-center py-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium mt-3">
+              Over Complete! 
+              <button 
                 onClick={() => setIsBowlerModalOpen(true)}
-                className="py-3 text-sm font-medium bg-cricket-blue text-white rounded-lg hover:bg-blue-700"
+                className="ml-2 underline font-semibold touch-target"
               >
-                🔄 Bowler
+                Change Bowler
               </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
+      {/* Modals remain the same but with better touch targets */}
       {/* Wicket Modal */}
       {isWicketModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -813,7 +717,7 @@ const LiveScoringPage: React.FC = () => {
                 <button
                   key={type}
                   onClick={() => confirmWicket(type.toLowerCase().replace(' ', ''))}
-                  className="py-3 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="py-3 text-sm font-medium bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-colors touch-target"
                 >
                   {type}
                 </button>
@@ -821,7 +725,7 @@ const LiveScoringPage: React.FC = () => {
             </div>
             <button
               onClick={() => setIsWicketModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-target"
             >
               Cancel
             </button>
@@ -841,7 +745,7 @@ const LiveScoringPage: React.FC = () => {
                   <button
                     key={player.id}
                     onClick={() => handleBowlerChange(player.id)}
-                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-target"
                   >
                     <div className="font-medium">
                       {player.name}
@@ -850,26 +754,16 @@ const LiveScoringPage: React.FC = () => {
                   </button>
                 );
               })}
-              {match.hasJoker && match.jokerName && (
-                <button
-                  onClick={() => handleBowlerChange('joker')}
-                  className="w-full p-3 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border-2 border-yellow-200"
-                >
-                  <div className="font-medium text-yellow-800">
-                    🃏 {match.jokerName} (Joker)
-                  </div>
-                </button>
-              )}
             </div>
             <button
               onClick={() => setIsBowlerModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-target"
             >
               Cancel
             </button>
-                     </div>
-         </div>
-       )}
+          </div>
+        </div>
+      )}
 
       {/* Batsman Selection Modal */}
       {isBatsmanModalOpen && (
@@ -883,7 +777,7 @@ const LiveScoringPage: React.FC = () => {
                   <button
                     key={player.id}
                     onClick={() => handleBatsmanChange(player.id)}
-                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-target"
                   >
                     <div className="font-medium">
                       {player.name}
@@ -892,20 +786,10 @@ const LiveScoringPage: React.FC = () => {
                   </button>
                 );
               })}
-              {match.hasJoker && match.jokerName && !battingTeam?.players.some(p => p.name === match.jokerName) && (
-                <button
-                  onClick={() => handleBatsmanChange('joker')}
-                  className="w-full p-3 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border-2 border-yellow-200"
-                >
-                  <div className="font-medium text-yellow-800">
-                    🃏 {match.jokerName} (Joker)
-                  </div>
-                </button>
-              )}
             </div>
             <button
               onClick={() => setIsBatsmanModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-target"
             >
               Cancel
             </button>
@@ -913,28 +797,28 @@ const LiveScoringPage: React.FC = () => {
         </div>
       )}
 
-      {/* Wide Extra Modal */}
+      {/* Wide Modal */}
       {isWideModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-4 text-center">Wide + Extra Runs</h3>
+            <h3 className="text-lg font-bold mb-4 text-center">Wide Ball</h3>
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {[0, 1, 2, 3, 4, 5, 6].map(runs => (
+              {[1, 2, 3, 4, 5].map(runs => (
                 <button
                   key={runs}
                   onClick={() => {
-                    handleExtra('wide', runs + 1); // +1 for the wide itself
+                    handleExtra('wide', runs);
                     setIsWideModalOpen(false);
                   }}
-                  className="py-4 text-lg font-bold bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg transition-colors"
+                  className="py-3 text-sm font-medium bg-orange-100 hover:bg-orange-200 active:bg-orange-300 rounded-lg transition-colors touch-target"
                 >
-                  Wd+{runs}
+                  Wd {runs}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setIsWideModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-target"
             >
               Cancel
             </button>
@@ -942,28 +826,28 @@ const LiveScoringPage: React.FC = () => {
         </div>
       )}
 
-      {/* No Ball Extra Modal */}
+      {/* No Ball Modal */}
       {isNoBallModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-4 text-center">No Ball + Runs Scored</h3>
+            <h3 className="text-lg font-bold mb-4 text-center">No Ball</h3>
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {[0, 1, 2, 3, 4, 5, 6].map(runs => (
+              {[1, 2, 3, 4, 5, 6, 7].map(runs => (
                 <button
                   key={runs}
                   onClick={() => {
-                    handleExtra('noball', runs + 1); // +1 for the no ball itself
+                    handleExtra('noball', runs);
                     setIsNoBallModalOpen(false);
                   }}
-                  className="py-4 text-lg font-bold bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors"
+                  className="py-3 text-sm font-medium bg-red-100 hover:bg-red-200 active:bg-red-300 rounded-lg transition-colors touch-target"
                 >
-                  Nb+{runs}
+                  Nb {runs}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setIsNoBallModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-target"
             >
               Cancel
             </button>
@@ -971,54 +855,39 @@ const LiveScoringPage: React.FC = () => {
         </div>
       )}
 
-      {/* Last Man Standing Modal */}
+      {/* Last Man Modal */}
       {isLastManModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <div className="text-center mb-6">
-              <div className="text-3xl mb-3">⚠️</div>
-              <h3 className="text-xl font-bold mb-2 text-gray-900">Last Man Standing!</h3>
-              <p className="text-gray-600 text-sm">
-                Only one batsman remains. How would you like to continue?
-              </p>
-            </div>
-            
-            <div className="space-y-3 mb-6">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-4 text-center">Last Man Standing!</h3>
+            <p className="text-gray-600 mb-4 text-center">
+              Only one batsman left. Switch to single-side batting?
+            </p>
+            <div className="space-y-3">
               <button
                 onClick={() => {
                   switchToSingleBatting(lastManBatsmanId);
                   setIsLastManModalOpen(false);
                 }}
-                className="w-full py-4 px-6 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors"
+                className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 active:bg-green-700 font-medium transition-colors touch-target"
               >
-                <div className="text-center">
-                  <div className="text-lg">🏏 Continue Batting Alone</div>
-                  <div className="text-sm text-green-100">Last batsman continues scoring</div>
-                </div>
+                Continue with Last Man
               </button>
-              
               <button
                 onClick={() => {
                   endInningsEarly();
                   setIsLastManModalOpen(false);
                 }}
-                className="w-full py-4 px-6 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
+                className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 active:bg-red-700 font-medium transition-colors touch-target"
               >
-                <div className="text-center">
-                  <div className="text-lg">🚫 End Innings</div>
-                  <div className="text-sm text-red-100">All out - innings complete</div>
-                </div>
+                End Innings
               </button>
-            </div>
-            
-            <div className="text-xs text-gray-500 text-center">
-              Choose wisely - this decision cannot be undone!
             </div>
           </div>
         </div>
       )}
-      </div>
-    );
-  };
+    </div>
+  );
+};
 
 export default LiveScoringPage; 

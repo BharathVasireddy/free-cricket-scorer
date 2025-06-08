@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
 import { useAuth } from '../contexts/AuthContext';
 import type { Team, Player } from '../types';
-import { Home, PlusCircle, ListTodo, UserCircle } from 'lucide-react';
 
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();

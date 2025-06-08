@@ -1,7 +1,7 @@
 {
   "name": "Free Cricket Scorer",
   "short_name": "Cricket Scorer",
-  "description": "Professional cricket scoring made simple and free. Track runs, wickets, overs, and player stats in real-time. Developed by Cloud 9 Digital.",
+  "description": "Perfect cricket scoring app for casual players and local tournaments. Score your backyard matches, street cricket, and custom format games with professional tools. Developed by Cloud 9 Digital.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

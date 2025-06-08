@@ -110,11 +110,12 @@ const LandingPage: React.FC = () => {
           <div className="text-center mb-12 lg:mb-16">
             <div className="text-6xl lg:text-8xl mb-4 lg:mb-6">🏏</div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 lg:mb-6 leading-tight">
-              Free Cricket Scorer
+              Score Your Cricket Matches
+              <span className="block text-yellow-300">Like a Pro!</span>
             </h1>
             <p className="text-lg md:text-xl lg:text-2xl text-green-100 mb-6 lg:mb-8 max-w-4xl mx-auto leading-relaxed px-4">
-              Professional cricket scoring made simple and free. Track live matches, 
-              manage player statistics, and never miss a ball.
+              Perfect for backyard cricket, street matches, and weekend tournaments. 
+              Score your casual games with professional tools. Custom rules welcome!
             </p>
             
             {/* CTA Buttons */}
@@ -145,23 +146,23 @@ const LandingPage: React.FC = () => {
               <div className="text-4xl lg:text-5xl mb-4">⚡</div>
               <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Real-time Scoring</h3>
               <p className="text-green-100 text-sm lg:text-base">
-                Score matches live with instant updates. Track runs, wickets, and overs as they happen.
+                Perfect for casual cricket! Score your neighborhood matches with professional accuracy.
               </p>
             </div>
             
             <div className="bg-white/10 backdrop-blur rounded-2xl p-6 lg:p-8 text-center">
-              <div className="text-4xl lg:text-5xl mb-4">📊</div>
-              <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Player Statistics</h3>
+              <div className="text-4xl lg:text-5xl mb-4">🎯</div>
+              <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Custom Rules</h3>
               <p className="text-green-100 text-sm lg:text-base">
-                Comprehensive player stats including batting averages, bowling figures, and strike rates.
+                Play with your own rules! Supports any format - from 5 overs to unlimited, any team size.
               </p>
             </div>
             
             <div className="bg-white/10 backdrop-blur rounded-2xl p-6 lg:p-8 text-center">
-              <div className="text-4xl lg:text-5xl mb-4">☁️</div>
-              <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Cloud Sync</h3>
+              <div className="text-4xl lg:text-5xl mb-4">📱</div>
+              <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Mobile First</h3>
               <p className="text-green-100 text-sm lg:text-base">
-                Save matches to the cloud and access them from any device. Share with team members.
+                Works perfectly on your phone. Score from the boundary while you're playing!
               </p>
             </div>
           </div>
@@ -170,7 +171,7 @@ const LandingPage: React.FC = () => {
           <div className="bg-white/5 backdrop-blur rounded-3xl p-6 lg:p-12 mb-12 lg:mb-16">
             <div className="text-center mb-8 lg:mb-12">
               <h2 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-                Trusted by Cricket Enthusiasts
+                Loved by Casual Cricket Players
               </h2>
               <div className="flex justify-center items-center space-x-2 mb-4">
                 <div className="flex space-x-1">
@@ -178,8 +179,8 @@ const LandingPage: React.FC = () => {
                     <span key={star} className="text-yellow-400 text-xl lg:text-2xl">⭐</span>
                   ))}
                 </div>
-                <span className="text-white font-semibold text-lg">4.8/5</span>
-                <span className="text-green-100">(127 reviews)</span>
+                <span className="text-white font-semibold text-lg">4.9/5</span>
+                <span className="text-green-100">(156 reviews)</span>
               </div>
             </div>
             
@@ -191,10 +192,10 @@ const LandingPage: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-green-100 text-sm lg:text-base mb-4">
-                  "Amazing app! Makes cricket scoring so easy and professional. Used it for our local tournament and everyone loved it."
+                  "Perfect for our weekend cricket matches! Easy to use and handles all our crazy custom rules. Best part - it's completely free!"
                 </p>
-                <div className="text-white font-semibold">- Rajesh Kumar</div>
-                <div className="text-green-200 text-sm">Cricket Coach, Mumbai</div>
+                <div className="text-white font-semibold">- Amit Sharma</div>
+                <div className="text-green-200 text-sm">Weekend Warrior, Mumbai</div>
               </div>
               
               <div className="bg-white/10 backdrop-blur rounded-xl p-6">
@@ -204,10 +205,10 @@ const LandingPage: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-green-100 text-sm lg:text-base mb-4">
-                  "Best free cricket scorer I've found. Clean interface, all features work perfectly, and no annoying ads!"
+                  "Amazing app for street cricket! We use it for all our neighborhood matches. Works great on mobile and super easy to track everything."
                 </p>
-                <div className="text-white font-semibold">- Priya Sharma</div>
-                <div className="text-green-200 text-sm">Sports Club Manager, Delhi</div>
+                <div className="text-white font-semibold">- Ravi Kumar</div>
+                <div className="text-green-200 text-sm">Gully Cricket Captain, Delhi</div>
               </div>
               
               <div className="bg-white/10 backdrop-blur rounded-xl p-6 md:col-span-2 lg:col-span-1">
@@ -217,10 +218,10 @@ const LandingPage: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-green-100 text-sm lg:text-base mb-4">
-                  "Perfect for our weekend matches. Easy to use on mobile, saves all data automatically. Highly recommended!"
+                  "Love this app! We play cricket with our own rules and this scorer handles everything perfectly. Clean interface and no annoying ads!"
                 </p>
-                <div className="text-white font-semibold">- Arjun Patel</div>
-                <div className="text-green-200 text-sm">Tournament Organizer</div>
+                <div className="text-white font-semibold">- Priya Patel</div>
+                <div className="text-green-200 text-sm">Casual Player, Bangalore</div>
               </div>
             </div>
           </div>

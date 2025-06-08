@@ -1,6 +1,6 @@
 import { collection, addDoc, getDocs, query, orderBy, where, doc, updateDoc, onSnapshot, Timestamp, limit } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Match } from '../types';
+import type { Match, FirebaseMatch } from '../types';
 import { trackFirebaseOperation, CacheTracker } from '../utils/performanceMonitor';
 
 // Cache for connection status and data
@@ -36,7 +36,6 @@ export const testFirestoreConnection = async (): Promise<boolean> => {
       console.log('🔍 Testing Firestore connection...');
       
       // Use a lightweight read operation instead of scanning a collection
-      const testRef = doc(db, '_test_', 'connection');
       // This will fail gracefully if collection doesn't exist, but tests connection
       await getDocs(query(collection(db, '_test_'), limit(1)));
       
@@ -178,7 +177,7 @@ export const getMatchByCode = async (matchCode: string): Promise<Match | null> =
 };
 
 // Heavily optimized user matches with caching
-export const getUserMatches = async (userId: string): Promise<(Match & { id: string })[]> => {
+export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation(`getUserMatches_${userId}`, async () => {
     const cacheKey = `user_matches_${userId}`;
     
@@ -205,7 +204,7 @@ export const getUserMatches = async (userId: string): Promise<(Match & { id: str
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
-      })) as (Match & { id: string })[];
+      })) as (FirebaseMatch & { id: string })[];
       
       console.log('✅ Found', matches.length, 'user matches');
       
@@ -229,7 +228,7 @@ export const getUserMatches = async (userId: string): Promise<(Match & { id: str
 };
 
 // Heavily optimized community matches with caching
-export const getCommunityMatches = async (): Promise<(Match & { id: string })[]> => {
+export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation('getCommunityMatches', async () => {
     const cacheKey = 'community_matches';
     
@@ -255,7 +254,7 @@ export const getCommunityMatches = async (): Promise<(Match & { id: string })[]>
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
-      })) as (Match & { id: string })[];
+      })) as (FirebaseMatch & { id: string })[];
       
       console.log('✅ Found', matches.length, 'community matches');
       
@@ -279,7 +278,7 @@ export const getCommunityMatches = async (): Promise<(Match & { id: string })[]>
 };
 
 // Optimized get all matches with pagination
-export const getAllMatches = async (limitCount: number = 100): Promise<(Match & { id: string })[]> => {
+export const getAllMatches = async (limitCount: number = 100): Promise<(FirebaseMatch & { id: string })[]> => {
   const cacheKey = `all_matches_${limitCount}`;
   
   try {
@@ -297,7 +296,7 @@ export const getAllMatches = async (limitCount: number = 100): Promise<(Match & 
     const matches = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data()
-    })) as (Match & { id: string })[];
+    })) as (FirebaseMatch & { id: string })[];
     
     console.log('✅ Found', matches.length, 'total matches');
     
@@ -326,7 +325,7 @@ export const subscribeToMatch = (matchId: string, callback: (match: Match | null
     } else {
       callback(null);
     }
-  }, (error) => {
+  }, (error: any) => {
     console.error('❌ Real-time listener error:', error.code || error.message);
     callback(null);
   });

@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserMatches, getCommunityMatches } from '../lib/matchService';
-import type { Match } from '../types';
+import type { FirebaseMatch } from '../types';
 
 const MatchHistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, isGuest } = useAuth();
   const [activeTab, setActiveTab] = useState<'private' | 'community'>('private');
-  const [privateMatches, setPrivateMatches] = useState<(Match & { id: string })[]>([]);
-  const [communityMatches, setCommunityMatches] = useState<(Match & { id: string })[]>([]);
+  const [privateMatches, setPrivateMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
+  const [communityMatches, setCommunityMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
@@ -88,13 +88,13 @@ const MatchHistoryPage: React.FC = () => {
     });
   };
 
-  const getMatchResult = (match: Match) => {
+  const getMatchResult = (match: FirebaseMatch) => {
     if (match.status !== 'completed') return 'In Progress';
     if (match.winner === 'Match Tied') return 'Tied';
     return `${match.winner} won${match.winMargin ? ` by ${match.winMargin}` : ''}`;
   };
 
-  const getMatchScore = (match: Match) => {
+  const getMatchScore = (match: FirebaseMatch) => {
     if (!match.innings || match.innings.length === 0) return 'No score';
     
     const firstInnings = match.innings[0];
@@ -107,7 +107,7 @@ const MatchHistoryPage: React.FC = () => {
     return `${firstInnings.totalRuns}/${firstInnings.totalWickets} vs ${secondInnings.totalRuns}/${secondInnings.totalWickets}`;
   };
 
-  const renderMatchCard = (match: Match & { id: string }) => (
+  const renderMatchCard = (match: FirebaseMatch & { id: string }) => (
     <div key={match.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
@@ -130,14 +130,14 @@ const MatchHistoryPage: React.FC = () => {
         <p className="text-sm text-gray-600">{getMatchResult(match)}</p>
       </div>
       
-      <div className="flex justify-between items-center text-xs text-gray-500">
-        <span>{match.format} • {match.overs} overs</span>
-        {match.matchCode && (
-          <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-            Code: {match.matchCode}
-          </span>
-        )}
-      </div>
+              <div className="flex justify-between items-center text-xs text-gray-500">
+          <span>{match.format || `${match.overs} overs`} • {match.playersPerTeam} players</span>
+          {match.matchCode && (
+            <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+              Code: {match.matchCode}
+            </span>
+          )}
+        </div>
     </div>
   );
 

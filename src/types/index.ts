@@ -64,6 +64,16 @@ export interface Match {
   winMargin?: string;
 }
 
+// Extended type for Firebase stored matches
+export interface FirebaseMatch extends Match {
+  matchCode?: string;
+  userId?: string | null;
+  isGuest?: boolean;
+  isPublic?: boolean;
+  updatedAt?: any; // Firestore Timestamp
+  format?: string;
+}
+
 export interface BatsmanStats {
   playerId: string;
   runs: number;

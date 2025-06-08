@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserMatches, getCommunityMatches } from '../lib/matchService';
-import type { Match } from '../types';
+import type { FirebaseMatch } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, isGuest } = useAuth();
-  const [privateMatches, setPrivateMatches] = useState<(Match & { id: string })[]>([]);
-  const [communityMatches, setCommunityMatches] = useState<(Match & { id: string })[]>([]);
+  const [privateMatches, setPrivateMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
+  const [communityMatches, setCommunityMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
@@ -70,13 +70,13 @@ const DashboardPage: React.FC = () => {
     });
   };
 
-  const getMatchResult = (match: Match) => {
+  const getMatchResult = (match: FirebaseMatch) => {
     if (match.status !== 'completed') return 'In Progress';
     if (match.winner === 'Match Tied') return 'Tied';
     return `${match.winner} won${match.winMargin ? ` by ${match.winMargin}` : ''}`;
   };
 
-  const getMatchScore = (match: Match) => {
+  const getMatchScore = (match: FirebaseMatch) => {
     if (!match.innings || match.innings.length === 0) return 'No score';
     
     const firstInnings = match.innings[0];
@@ -100,7 +100,7 @@ const DashboardPage: React.FC = () => {
     return { totalMatches, completedMatches: completedMatches.length, wins };
   };
 
-  const MatchCard = ({ match, compact = false }: { match: Match & { id: string }, compact?: boolean }) => (
+  const MatchCard = ({ match, compact = false }: { match: FirebaseMatch & { id: string }, compact?: boolean }) => (
     <div className={`bg-white rounded-lg border border-gray-200 ${compact ? 'p-3' : 'p-4'} hover:shadow-md transition-shadow`}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex-1">

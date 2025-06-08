@@ -7,7 +7,23 @@ import { trackFirebaseOperation, CacheTracker } from '../utils/performanceMonito
 let connectionStatus: 'unknown' | 'connected' | 'failed' = 'unknown';
 let connectionTestPromise: Promise<boolean> | null = null;
 let matchesCache: Map<string, { data: any[]; timestamp: number }> = new Map();
-const CACHE_DURATION = 30000; // 30 seconds
+const CACHE_DURATION = 60000; // Increased to 60 seconds for better performance
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+// Enhanced retry logic
+const withRetry = async <T>(operation: () => Promise<T>, retries = MAX_RETRIES): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error: any) {
+    if (retries > 0 && (error.code === 'unavailable' || error.code === 'deadline-exceeded')) {
+      console.log(`🔄 Retrying operation... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return withRetry(operation, retries - 1);
+    }
+    throw error;
+  }
+};
 
 // Generate unique 6-character match code
 export const generateMatchCode = (): string => {
@@ -35,9 +51,14 @@ export const testFirestoreConnection = async (): Promise<boolean> => {
     try {
       console.log('🔍 Testing Firestore connection...');
       
-      // Use a lightweight read operation instead of scanning a collection
-      // This will fail gracefully if collection doesn't exist, but tests connection
-      await getDocs(query(collection(db, '_test_'), limit(1)));
+      // Use a very lightweight operation with timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout')), 5000);
+      });
+      
+      const testPromise = getDocs(query(collection(db, 'matches'), limit(1)));
+      
+      await Promise.race([testPromise, timeoutPromise]);
       
       connectionStatus = 'connected';
       console.log('✅ Firestore connection successful');
@@ -55,6 +76,9 @@ export const testFirestoreConnection = async (): Promise<boolean> => {
       // Reset the promise after 5 seconds to allow retry
       setTimeout(() => {
         connectionTestPromise = null;
+        if (connectionStatus === 'failed') {
+          connectionStatus = 'unknown'; // Allow retry
+        }
       }, 5000);
     }
   })();
@@ -81,7 +105,7 @@ const setCachedData = (cacheKey: string, data: any[]): void => {
 
 // Optimized save function - remove redundant connection test
 export const saveMatch = async (matchData: Match, userId?: string, isGuest: boolean = false): Promise<string> => {
-  try {
+  return withRetry(async () => {
     console.log('💾 Saving match...', { userId, isGuest });
 
     const matchCode = generateMatchCode();
@@ -102,30 +126,24 @@ export const saveMatch = async (matchData: Match, userId?: string, isGuest: bool
     matchesCache.clear();
     
     return matchCode;
-  } catch (error: any) {
-    console.error('❌ Error saving match:', error.code || error.message);
-    throw new Error(`Failed to save match: ${error.message}`);
-  }
+  });
 };
 
 // Optimized real-time update
 export const updateMatchRealtime = async (matchId: string, matchData: Match): Promise<void> => {
-  try {
+  return withRetry(async () => {
     const matchRef = doc(db, 'matches', matchId);
     await updateDoc(matchRef, {
       ...matchData,
       updatedAt: Timestamp.now()
     });
     console.log('✅ Match updated in real-time');
-  } catch (error: any) {
-    console.error('❌ Error updating match:', error.code || error.message);
-    throw new Error(`Failed to update match: ${error.message}`);
-  }
+  });
 };
 
 // Optimized create match function
 export const createMatch = async (matchData: Match, userId?: string, isGuest: boolean = false): Promise<{ matchCode: string; docId: string }> => {
-  try {
+  return withRetry(async () => {
     console.log('🆕 Creating new match...', { userId, isGuest });
 
     const matchCode = generateMatchCode();
@@ -146,15 +164,12 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
     matchesCache.clear();
     
     return { matchCode, docId: docRef.id };
-  } catch (error: any) {
-    console.error('❌ Error creating match:', error.code || error.message);
-    throw new Error(`Failed to create match: ${error.message}`);
-  }
+  });
 };
 
 // Optimized get match by code with better query
 export const getMatchByCode = async (matchCode: string): Promise<Match | null> => {
-  try {
+  return withRetry(async () => {
     console.log('🔍 Getting match by code:', matchCode);
     
     // Use where query instead of scanning all documents
@@ -170,13 +185,10 @@ export const getMatchByCode = async (matchCode: string): Promise<Match | null> =
     const doc = snapshot.docs[0];
     console.log('✅ Match found:', matchCode);
     return doc.data() as Match;
-  } catch (error: any) {
-    console.error('❌ Error getting match:', error.code || error.message);
-    throw new Error(`Failed to get match: ${error.message}`);
-  }
+  });
 };
 
-// Heavily optimized user matches with caching
+// Heavily optimized user matches with caching and timeout
 export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation(`getUserMatches_${userId}`, async () => {
     const cacheKey = `user_matches_${userId}`;
@@ -190,16 +202,25 @@ export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & {
 
       console.log('📊 Getting user matches for:', userId);
 
-      const matchesRef = collection(db, 'matches');
-      const q = query(
-        matchesRef, 
-        where('userId', '==', userId),
-        where('isGuest', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(50) // Limit results for better performance
-      );
-      
-      const snapshot = await getDocs(q);
+      // Use a timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout')), 10000);
+      });
+
+      const queryPromise = withRetry(async () => {
+        const matchesRef = collection(db, 'matches');
+        const q = query(
+          matchesRef, 
+          where('userId', '==', userId),
+          where('isGuest', '==', false),
+          orderBy('createdAt', 'desc'),
+          limit(20) // Reduced limit for faster loading
+        );
+        
+        return await getDocs(q);
+      });
+
+      const snapshot = await Promise.race([queryPromise, timeoutPromise]);
       
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
@@ -222,12 +243,13 @@ export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & {
         return staleCache.data;
       }
       
+      // Return empty array instead of throwing to prevent UI crashes
       return [];
     }
   });
 };
 
-// Heavily optimized community matches with caching
+// Heavily optimized community matches with caching and timeout
 export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation('getCommunityMatches', async () => {
     const cacheKey = 'community_matches';
@@ -241,15 +263,24 @@ export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: stri
 
       console.log('🌍 Getting community matches...');
 
-      const matchesRef = collection(db, 'matches');
-      const q = query(
-        matchesRef, 
-        where('isPublic', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(50) // Limit results for better performance
-      );
-      
-      const snapshot = await getDocs(q);
+      // Use a timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout')), 10000);
+      });
+
+      const queryPromise = withRetry(async () => {
+        const matchesRef = collection(db, 'matches');
+        const q = query(
+          matchesRef, 
+          where('isPublic', '==', true),
+          orderBy('createdAt', 'desc'),
+          limit(20) // Reduced limit for faster loading
+        );
+        
+        return await getDocs(q);
+      });
+
+      const snapshot = await Promise.race([queryPromise, timeoutPromise]);
       
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
@@ -272,13 +303,14 @@ export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: stri
         return staleCache.data;
       }
       
+      // Return empty array instead of throwing to prevent UI crashes
       return [];
     }
   });
 };
 
 // Optimized get all matches with pagination
-export const getAllMatches = async (limitCount: number = 100): Promise<(FirebaseMatch & { id: string })[]> => {
+export const getAllMatches = async (limitCount: number = 50): Promise<(FirebaseMatch & { id: string })[]> => {
   const cacheKey = `all_matches_${limitCount}`;
   
   try {
@@ -289,14 +321,17 @@ export const getAllMatches = async (limitCount: number = 100): Promise<(Firebase
     }
 
     console.log('📋 Getting all matches...');
-    const matchesRef = collection(db, 'matches');
-    const q = query(matchesRef, orderBy('createdAt', 'desc'), limit(limitCount));
-    const snapshot = await getDocs(q);
     
-    const matches = snapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data()
-    })) as (FirebaseMatch & { id: string })[];
+    const matches = await withRetry(async () => {
+      const matchesRef = collection(db, 'matches');
+      const q = query(matchesRef, orderBy('createdAt', 'desc'), limit(limitCount));
+      const snapshot = await getDocs(q);
+      
+      return snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      })) as (FirebaseMatch & { id: string })[];
+    });
     
     console.log('✅ Found', matches.length, 'total matches');
     

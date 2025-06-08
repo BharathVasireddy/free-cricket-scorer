@@ -11,9 +11,13 @@ const DashboardPage: React.FC = () => {
   const [communityMatches, setCommunityMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [isLoadingCommunity, setIsLoadingCommunity] = useState(true);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     loadMatches();
+    loadCommunityMatches();
   }, [currentUser]);
 
   const loadMatches = async () => {
@@ -21,33 +25,71 @@ const DashboardPage: React.FC = () => {
     setError('');
     
     try {
-      console.log('⚡ Loading dashboard matches with optimized service...');
+      console.log('⚡ Loading matches with optimized service...');
       
-      // Use Promise.allSettled for better error handling
-      const [privateResult, communityResult] = await Promise.allSettled([
-        currentUser && !isGuest ? getUserMatches(currentUser.uid) : Promise.resolve([]),
-        getCommunityMatches()
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [privateResult] = await Promise.allSettled([
+        currentUser && !isGuest ? getUserMatches(currentUser.uid) : Promise.resolve([])
       ]);
       
-      // Handle results gracefully
+      // Handle private matches result
       const privateData = privateResult.status === 'fulfilled' ? privateResult.value : [];
-      const communityData = communityResult.status === 'fulfilled' ? communityResult.value : [];
+      if (privateResult.status === 'rejected') {
+        console.warn('Failed to load private matches:', privateResult.reason);
+        setError(`Failed to load matches: ${privateResult.reason.message || 'Unknown error'}`);
+      }
       
       setPrivateMatches(privateData);
-      setCommunityMatches(communityData);
+      console.log('📊 Loaded:', privateData.length, 'private matches');
       
-      console.log('📊 Dashboard loaded:', privateData.length, 'private,', communityData.length, 'community');
-      
-      // Only show error if both failed
-      if (privateResult.status === 'rejected' && communityResult.status === 'rejected') {
-        setError('Unable to load matches. Please check your connection.');
-      }
     } catch (error: any) {
-      console.error('❌ Error loading dashboard matches:', error);
-      setError('Failed to load matches');
+      console.error('❌ Error loading matches:', error);
+      setError(`Failed to load matches: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadCommunityMatches = async (showLoader = true) => {
+    if (showLoader) {
+      setIsLoadingCommunity(true);
+    }
+    setCommunityError(null);
+    
+    try {
+      console.log('🌍 Loading community matches...');
+      
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        if (isLoadingCommunity) {
+          setCommunityError('Loading is taking longer than expected. Please check your connection.');
+        }
+      }, 10000);
+
+      const matches = await getCommunityMatches();
+      clearTimeout(timeout);
+      
+      setCommunityMatches(matches);
+      setRetryCount(0); // Reset on success
+      console.log('✅ Loaded', matches.length, 'community matches');
+    } catch (error: any) {
+      console.error('❌ Failed to load community matches:', error);
+      
+      const errorMessage = error.code === 'permission-denied' 
+        ? 'Access denied to community matches.'
+        : error.code === 'unavailable'
+        ? 'Community matches temporarily unavailable.'
+        : error.message || 'Failed to load community matches.';
+        
+      setCommunityError(errorMessage);
+    } finally {
+      setIsLoadingCommunity(false);
+    }
+  };
+
+  const handleRetryCommunity = () => {
+    setRetryCount(prev => prev + 1);
+    loadCommunityMatches();
   };
 
   const formatDate = (timestamp: any) => {
@@ -133,261 +175,230 @@ const DashboardPage: React.FC = () => {
     </div>
   );
 
+  const renderCommunitySection = () => {
+    if (isLoadingCommunity) {
+      return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Community Matches</h2>
+          </div>
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading community matches...</p>
+            {retryCount > 0 && (
+              <p className="text-sm text-gray-400">Attempt {retryCount + 1}</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (communityError) {
+      return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Community Matches</h2>
+          </div>
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="text-4xl text-red-500">⚠️</div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Unable to Load</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-center text-sm max-w-md">{communityError}</p>
+            <button
+              onClick={handleRetryCommunity}
+              disabled={isLoadingCommunity}
+              className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              <span className={isLoadingCommunity ? 'animate-spin' : ''}>🔄</span>
+              <span>Try Again</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Community Matches</h2>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => loadCommunityMatches(false)}
+              className="flex items-center space-x-1 px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <span>🔄</span>
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => navigate('/explore')}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+            >
+              View All →
+            </button>
+          </div>
+        </div>
+
+        {communityMatches.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">👥</div>
+            <p className="text-gray-600 dark:text-gray-300">No community matches available</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Check back later for new matches</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {communityMatches.slice(0, 5).map((match) => (
+              <div
+                key={match.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                onClick={() => navigate(`/match/${match.matchCode || match.id}`)}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-yellow-500">🏆</span>
+                    <span className="font-medium text-gray-900 dark:text-white text-sm">
+                      {match.teams?.[0]?.name || 'Team 1'} vs {match.teams?.[1]?.name || 'Team 2'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{formatDate(match.createdAt)}</span>
+                    <span>{match.format || `${match.overs} overs`}</span>
+                    <span className="text-green-600 dark:text-green-400">{getMatchResult(match)}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    {getMatchScore(match)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin text-4xl mb-4">🏏</div>
-          <p className="text-gray-600">Loading dashboard...</p>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 mb-2">Loading dashboard...</p>
+          <div className="text-sm text-blue-600">Getting your matches ready</div>
         </div>
       </div>
     );
   }
 
-  // GUEST USER DASHBOARD
-  if (isGuest) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
-          <div className="p-4 flex items-center justify-between">
-            <button
-              onClick={() => navigate('/')}
-              className="text-white/80 hover:text-white text-sm font-medium"
-            >
-              ← Back
-            </button>
-            <h1 className="text-lg font-bold">Community Explorer</h1>
-            <div className="w-12"></div>
-          </div>
-          
-          <div className="px-4 pb-6 text-center">
-            <div className="text-3xl mb-2">👥</div>
-            <h2 className="text-xl font-bold mb-1">Discover Cricket Matches</h2>
-            <p className="text-white/90 text-sm">
-              Explore matches from the cricket community
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-4">
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              onClick={() => navigate('/setup')}
-              className="bg-cricket-blue text-white p-4 rounded-lg text-center hover:bg-blue-700 transition-colors"
-            >
-              <div className="text-2xl mb-1">🏏</div>
-              <div className="text-sm font-medium">Start New Match</div>
-            </button>
-            <button
-              onClick={() => navigate('/auth')}
-              className="bg-green-600 text-white p-4 rounded-lg text-center hover:bg-green-700 transition-colors"
-            >
-              <div className="text-2xl mb-1">🔒</div>
-              <div className="text-sm font-medium">Create Account</div>
-            </button>
-          </div>
-
-          {/* Community Stats */}
-          <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-            <h3 className="font-bold text-gray-900 mb-3">🌟 Community Stats</h3>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-xl font-bold text-cricket-blue">{communityMatches.length}</div>
-                <div className="text-xs text-gray-600">Total Matches</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-green-600">
-                  {communityMatches.filter(m => m.status === 'completed').length}
-                </div>
-                <div className="text-xs text-gray-600">Completed</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-orange-600">
-                  {communityMatches.filter(m => m.status !== 'completed').length}
-                </div>
-                <div className="text-xs text-gray-600">In Progress</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Community Matches */}
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold text-gray-900">🏏 Recent Matches</h3>
-              {communityMatches.length > 3 && (
-                <button className="text-cricket-blue text-sm font-medium">
-                  View All
-                </button>
-              )}
-            </div>
-            
-            {communityMatches.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
-                <div className="text-3xl mb-2">🎯</div>
-                <h4 className="font-semibold text-gray-900 mb-1">No matches yet!</h4>
-                <p className="text-gray-600 text-sm mb-3">Be the first to contribute</p>
-                <button
-                  onClick={() => navigate('/setup')}
-                  className="bg-cricket-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Start First Match
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {communityMatches.slice(0, 5).map((match) => (
-                  <MatchCard key={match.id} match={match} compact />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // LOGGED-IN USER DASHBOARD
-  const stats = getPlayerStats();
-  
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-cricket-blue to-blue-700 text-white">
-        <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
-            className="text-white/80 hover:text-white text-sm font-medium"
-          >
-            ← Back
-          </button>
-          <h1 className="text-lg font-bold">My Dashboard</h1>
-          <div className="w-12"></div>
-        </div>
-        
-        <div className="px-4 pb-6">
-          <div className="text-center mb-4">
-            <div className="text-3xl mb-2">🏆</div>
-            <h2 className="text-xl font-bold mb-1">
-              Welcome, {currentUser.displayName || currentUser.email?.split('@')[0]}
-            </h2>
-            <p className="text-white/90 text-sm">Your cricket scoring dashboard</p>
-          </div>
-          
-          {/* Personal Stats */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-xl font-bold">{stats.totalMatches}</div>
-                <div className="text-xs text-white/80">Total Matches</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold">{stats.completedMatches}</div>
-                <div className="text-xs text-white/80">Completed</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold">{stats.wins}</div>
-                <div className="text-xs text-white/80">Wins</div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Cricket Scorer Dashboard</h1>
+          <p className="text-gray-600">Welcome back! Here's your cricket scoring overview.</p>
+
+          {error && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <span className="text-red-600 mr-2">⚠️</span>
+                <p className="text-red-700">{error}</p>
+                <button
+                  onClick={loadMatches}
+                  className="ml-auto bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <button
-            onClick={() => navigate('/setup')}
-            className="bg-cricket-green text-white p-4 rounded-lg text-center hover:bg-green-700 transition-colors"
-          >
-            <div className="text-2xl mb-1">🏏</div>
-            <div className="text-sm font-medium">New Match</div>
-          </button>
-          <button
-            onClick={() => {
-              // TODO: Add continue in-progress match functionality
-              alert('Continue match functionality coming soon!');
-            }}
-            className="bg-orange-600 text-white p-4 rounded-lg text-center hover:bg-orange-700 transition-colors"
-          >
-            <div className="text-2xl mb-1">⏱️</div>
-            <div className="text-sm font-medium">Continue Match</div>
-          </button>
+          )}
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-red-700">{error}</p>
-            <button
-              onClick={loadMatches}
-              className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        {/* Recent Private Matches */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-gray-900">🔒 My Recent Matches</h3>
-            {privateMatches.length > 3 && (
-              <button
-                onClick={() => navigate('/matches')}
-                className="text-cricket-blue text-sm font-medium"
-              >
-                View All
-              </button>
-            )}
-          </div>
-          
-          {privateMatches.length === 0 ? (
-            <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
-              <div className="text-3xl mb-2">🏏</div>
-              <h4 className="font-semibold text-gray-900 mb-1">No matches yet</h4>
-              <p className="text-gray-600 text-sm mb-3">Start your first private match</p>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Quick Actions */}
+          <div className="lg:col-span-2">
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
               <button
                 onClick={() => navigate('/setup')}
-                className="bg-cricket-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-6 text-left hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-lg"
               >
-                Start First Match
+                <div className="text-3xl mb-3">🏏</div>
+                <h3 className="text-xl font-bold mb-2">New Match</h3>
+                <p className="text-blue-100">Start scoring a new cricket match</p>
+              </button>
+
+              <button
+                onClick={() => navigate('/join')}
+                className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 text-left hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-105 shadow-lg"
+              >
+                <div className="text-3xl mb-3">👥</div>
+                <h3 className="text-xl font-bold mb-2">Join Match</h3>
+                <p className="text-green-100">Enter code to join existing match</p>
               </button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {privateMatches.slice(0, 3).map((match) => (
-                <MatchCard key={match.id} match={match} compact />
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Community Preview */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-gray-900">👥 Community Activity</h3>
-            <button
-              onClick={() => navigate('/matches')}
-              className="text-cricket-blue text-sm font-medium"
-            >
-              Explore All
-            </button>
+            {/* Recent Matches */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Your Recent Matches</h2>
+                <button
+                  onClick={() => navigate('/history')}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                >
+                  View All →
+                </button>
+              </div>
+
+              {privateMatches.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🎯</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No matches yet</h3>
+                  <p className="text-gray-600 mb-4">Start your first match to see it here</p>
+                  <button
+                    onClick={() => navigate('/setup')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Create Match
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {privateMatches.slice(0, 3).map((match) => (
+                    <MatchCard key={match.id} match={match} compact />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          
-          {communityMatches.length === 0 ? (
-            <div className="text-center py-6 bg-white rounded-lg border border-gray-200">
-              <div className="text-2xl mb-2">👥</div>
-              <p className="text-gray-600 text-sm">No community matches yet</p>
+
+          {/* Stats Sidebar */}
+          <div className="space-y-6">
+            {/* User Stats */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="font-bold text-gray-900 mb-4">📊 Your Stats</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Total Matches</span>
+                  <span className="font-bold text-2xl text-blue-600">
+                    {isGuest ? '---' : getPlayerStats().totalMatches}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Completed</span>
+                  <span className="font-bold text-2xl text-green-600">
+                    {isGuest ? '---' : getPlayerStats().completedMatches}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Wins</span>
+                  <span className="font-bold text-2xl text-yellow-600">
+                    {isGuest ? '---' : getPlayerStats().wins}
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {communityMatches.slice(0, 2).map((match) => (
-                <MatchCard key={match.id} match={match} compact />
-              ))}
-            </div>
-          )}
+
+            {/* Community Matches Section */}
+            {renderCommunitySection()}
+          </div>
         </div>
       </div>
     </div>

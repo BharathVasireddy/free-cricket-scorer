@@ -25,6 +25,28 @@ const withRetry = async <T>(operation: () => Promise<T>, retries = MAX_RETRIES):
   }
 };
 
+// Data sanitization function to remove undefined values (Firestore doesn't accept undefined)
+const sanitizeMatchData = (data: any): any => {
+  const sanitized = { ...data };
+  
+  // Remove undefined values recursively
+  Object.keys(sanitized).forEach(key => {
+    if (sanitized[key] === undefined) {
+      delete sanitized[key];
+    } else if (sanitized[key] !== null && typeof sanitized[key] === 'object' && !Array.isArray(sanitized[key]) && !(sanitized[key] instanceof Date)) {
+      // Recursively sanitize nested objects
+      sanitized[key] = sanitizeMatchData(sanitized[key]);
+    } else if (Array.isArray(sanitized[key])) {
+      // Sanitize arrays
+      sanitized[key] = sanitized[key].map((item: any) => 
+        item !== null && typeof item === 'object' ? sanitizeMatchData(item) : item
+      ).filter((item: any) => item !== undefined);
+    }
+  });
+  
+  return sanitized;
+};
+
 // Generate unique 6-character match code
 export const generateMatchCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -109,7 +131,7 @@ export const saveMatch = async (matchData: Match, userId?: string, isGuest: bool
     console.log('💾 Saving match...', { userId, isGuest });
 
     const matchCode = generateMatchCode();
-    const matchToSave = {
+    const matchToSave = sanitizeMatchData({
       ...matchData,
       matchCode,
       userId: userId || null,
@@ -117,7 +139,7 @@ export const saveMatch = async (matchData: Match, userId?: string, isGuest: bool
       isPublic: isGuest,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
-    };
+    });
 
     const docRef = await addDoc(collection(db, 'matches'), matchToSave);
     console.log('✅ Match saved with ID: ', docRef.id, 'Code:', matchCode);
@@ -133,10 +155,11 @@ export const saveMatch = async (matchData: Match, userId?: string, isGuest: bool
 export const updateMatchRealtime = async (matchId: string, matchData: Match): Promise<void> => {
   return withRetry(async () => {
     const matchRef = doc(db, 'matches', matchId);
-    await updateDoc(matchRef, {
+    const sanitizedData = sanitizeMatchData({
       ...matchData,
       updatedAt: Timestamp.now()
     });
+    await updateDoc(matchRef, sanitizedData);
     console.log('✅ Match updated in real-time');
   });
 };
@@ -147,7 +170,7 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
     console.log('🆕 Creating new match...', { userId, isGuest });
 
     const matchCode = generateMatchCode();
-    const matchToSave = {
+    const matchToSave = sanitizeMatchData({
       ...matchData,
       matchCode,
       userId: userId || null,
@@ -155,8 +178,10 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
       isPublic: isGuest,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
-    };
+    });
 
+    console.log('🔍 Sanitized match data:', Object.keys(matchToSave)); // Debug log
+    
     const docRef = await addDoc(collection(db, 'matches'), matchToSave);
     console.log('✅ Match created with ID: ', docRef.id, 'Code:', matchCode);
     

@@ -21,6 +21,7 @@ interface MatchStore extends MatchState {
   switchToSingleBatting: (remainingBatsmanId: string) => void;
   endInningsEarly: () => void;
   isLastManStanding: () => { isLastMan: boolean; remainingBatsmanId?: string } | null;
+  checkAndAbandonMatch: () => boolean;
   resetMatch: () => void;
   setError: (error: string | null) => void;
   saveToFirebase: () => Promise<void>;
@@ -1073,6 +1074,36 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
   setError: (error) => {
     set({ error });
+  },
+
+  checkAndAbandonMatch: () => {
+    const state = get();
+    if (!state.match || state.match.status !== 'active') return false;
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+    const matchStartTime = new Date(state.match.createdAt);
+
+    if (matchStartTime < oneHourAgo) {
+      // Match has been active for more than 1 hour - abandon it
+      const updatedMatch = {
+        ...state.match,
+        status: 'completed' as const,
+        winner: 'Match Abandoned',
+        winMargin: 'Time exceeded (1 hour limit)',
+      };
+
+      set({
+        match: updatedMatch,
+        error: 'Match abandoned due to inactivity (1 hour limit)',
+      });
+
+      // Save the abandoned status to Firebase
+      get().saveToFirebase();
+      
+      return true; // Match was abandoned
+    }
+
+    return false; // Match is still valid
   },
 
   saveToFirebase: async () => {

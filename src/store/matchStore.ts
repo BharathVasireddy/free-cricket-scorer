@@ -1,9 +1,16 @@
 import { create } from 'zustand';
 import type { MatchState, Match, Ball, Over, Innings, BatsmanStats } from '../types';
+import { createMatch as createMatchFirebase, updateMatchRealtime } from '../lib/matchService';
 
 interface MatchStore extends MatchState {
+  // Firebase integration
+  firebaseDocId: string | null;
+  matchCode: string | null;
+  lastSaveTime: Date | null;
+  
   // Actions
-  createMatch: (match: Omit<Match, 'id' | 'createdAt'>) => void;
+  createMatch: (match: Omit<Match, 'id' | 'createdAt'>, userId?: string, isGuest?: boolean) => Promise<void>;
+  loadMatch: (match: Match) => void;
   addBall: (ball: Omit<Ball, 'overNumber' | 'ballNumber'>) => void;
   startNewOver: (bowlerId: string) => void;
   completeInnings: () => void;
@@ -16,9 +23,14 @@ interface MatchStore extends MatchState {
   isLastManStanding: () => { isLastMan: boolean; remainingBatsmanId?: string } | null;
   resetMatch: () => void;
   setError: (error: string | null) => void;
+  saveToFirebase: () => Promise<void>;
 }
 
-const initialState: MatchState = {
+const initialState: MatchState & {
+  firebaseDocId: string | null;
+  matchCode: string | null;
+  lastSaveTime: Date | null;
+} = {
   match: null,
   currentInnings: null,
   currentOver: null,
@@ -26,17 +38,23 @@ const initialState: MatchState = {
   currentBowler: null,
   isLoading: false,
   error: null,
+  firebaseDocId: null,
+  matchCode: null,
+  lastSaveTime: null,
 };
 
 export const useMatchStore = create<MatchStore>((set, get) => ({
   ...initialState,
 
-  createMatch: (matchData) => {
-    const match: Match = {
-      ...matchData,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-    };
+  createMatch: async (matchData, userId, isGuest = false) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const match: Match = {
+        ...matchData,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+      };
 
     // Create first innings
     const firstInnings: Innings = {
@@ -87,6 +105,9 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           },
         ];
 
+    // Save to Firebase and get document ID
+    const { matchCode, docId } = await createMatchFirebase(match, userId, isGuest);
+
     set({
       match,
       currentInnings: firstInnings,
@@ -100,6 +121,133 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         economy: 0,
         maidens: 0,
       },
+      firebaseDocId: docId,
+      matchCode,
+      lastSaveTime: new Date(),
+      isLoading: false,
+      error: null,
+    });
+  } catch (error: any) {
+    console.error('Error creating match:', error);
+    set({
+      error: error.message || 'Failed to create match',
+      isLoading: false,
+    });
+    throw error;
+  }
+  },
+
+  loadMatch: (match) => {
+    // Load an existing match from Firebase (for recovery)
+    const currentInnings = match.innings[match.currentInning - 1];
+    
+    // Reconstruct current batsmen state
+    let currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] | null = null;
+    
+    if (currentInnings && !currentInnings.isCompleted) {
+      if (match.isSingleSide) {
+        const batsmanId = typeof currentInnings.currentBatsmanIds === 'string' 
+          ? currentInnings.currentBatsmanIds 
+          : currentInnings.currentBatsmanIds[0];
+        
+        currentBatsmen = {
+          playerId: batsmanId,
+          runs: 0, // Will be calculated from balls
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        };
+      } else {
+        const batsmanIds = Array.isArray(currentInnings.currentBatsmanIds) 
+          ? currentInnings.currentBatsmanIds 
+          : [currentInnings.currentBatsmanIds];
+        
+        currentBatsmen = [
+          {
+            playerId: batsmanIds[0],
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          },
+          {
+            playerId: batsmanIds[1] || batsmanIds[0],
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          },
+        ];
+      }
+      
+      // Recalculate batsman stats from all balls
+      for (const over of currentInnings.overs) {
+        for (const ball of over.balls) {
+          if (ball.batsmanId) {
+            if (match.isSingleSide) {
+              const batsman = currentBatsmen as BatsmanStats;
+              if (batsman.playerId === ball.batsmanId) {
+                batsman.runs += ball.runs;
+                batsman.balls += (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
+                batsman.fours += (ball.runs === 4 ? 1 : 0);
+                batsman.sixes += (ball.runs === 6 ? 1 : 0);
+                batsman.strikeRate = batsman.balls > 0 ? (batsman.runs / batsman.balls) * 100 : 0;
+                if (ball.wicket && ball.batsmanId === batsman.playerId) {
+                  batsman.isOut = true;
+                  batsman.dismissalType = ball.wicketType;
+                }
+              }
+            } else {
+              const batsmen = currentBatsmen as [BatsmanStats, BatsmanStats];
+              for (const batsman of batsmen) {
+                if (batsman.playerId === ball.batsmanId) {
+                  batsman.runs += ball.runs;
+                  batsman.balls += (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
+                  batsman.fours += (ball.runs === 4 ? 1 : 0);
+                  batsman.sixes += (ball.runs === 6 ? 1 : 0);
+                  batsman.strikeRate = batsman.balls > 0 ? (batsman.runs / batsman.balls) * 100 : 0;
+                  if (ball.wicket && ball.batsmanId === batsman.playerId) {
+                    batsman.isOut = true;
+                    batsman.dismissalType = ball.wicketType;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Find current over
+    const currentOver = currentInnings?.overs.find(o => !o.completed) || null;
+    
+    // Find current bowler
+    let currentBowler = null;
+    if (currentOver) {
+      currentBowler = {
+        playerId: currentOver.bowlerId,
+        overs: 0,
+        balls: 0,
+        runs: 0,
+        wickets: 0,
+        economy: 0,
+        maidens: 0,
+      };
+    }
+
+    set({
+      match,
+      currentInnings,
+      currentOver,
+      currentBatsmen,
+      currentBowler,
+      isLoading: false,
       error: null,
     });
   },
@@ -257,6 +405,14 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       // Don't auto-create second innings - let user go through innings break and player selection
       // The second innings will be created when players are selected
     }
+
+    // Auto-save to Firebase after every ball
+    setTimeout(() => {
+      const currentState = get();
+      if (currentState.firebaseDocId) {
+        currentState.saveToFirebase();
+      }
+    }, 100); // Small delay to ensure state is updated
   },
 
   startNewOver: (bowlerId) => {
@@ -887,5 +1043,19 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
   setError: (error) => {
     set({ error });
+  },
+
+  saveToFirebase: async () => {
+    const state = get();
+    if (!state.match || !state.firebaseDocId) return;
+
+    try {
+      await updateMatchRealtime(state.firebaseDocId, state.match);
+      set({ lastSaveTime: new Date() });
+      console.log('Match saved to Firebase at:', new Date().toISOString());
+    } catch (error: any) {
+      console.error('Failed to save match to Firebase:', error);
+      set({ error: 'Failed to save match - will retry' });
+    }
   },
 })); 

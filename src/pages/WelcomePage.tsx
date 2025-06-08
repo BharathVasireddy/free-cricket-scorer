@@ -1,11 +1,51 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser, isLoading, logout } = useAuth();
+
+  useEffect(() => {
+    // Redirect to auth page if not authenticated
+    if (!isLoading && !currentUser) {
+      navigate('/auth');
+    }
+  }, [currentUser, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin text-6xl mb-4">🏏</div>
+          <p className="text-white text-xl">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return null; // Will redirect to auth
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cricket-green via-green-600 to-green-800 flex flex-col">
+      {/* Header with user info */}
+      <div className="flex justify-between items-center p-6">
+        <div className="text-white">
+          <div className="text-sm opacity-75">Welcome back</div>
+          <div className="font-semibold">
+            {currentUser.isAnonymous ? '👥 Guest User' : `👤 ${currentUser.displayName || currentUser.email}`}
+          </div>
+        </div>
+        <button
+          onClick={logout}
+          className="text-white/75 hover:text-white text-sm font-medium"
+        >
+          Sign Out
+        </button>
+      </div>
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="text-center mb-12">

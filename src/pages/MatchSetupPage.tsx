@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
+import { useAuth } from '../contexts/AuthContext';
 import type { Team, Player } from '../types';
 
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { createMatch } = useMatchStore();
+  const { currentUser, isGuest } = useAuth();
 
   // Form state
   const [teams, setTeams] = useState<Team[]>([
@@ -108,20 +110,25 @@ const MatchSetupPage: React.FC = () => {
     }
   };
 
-  const handleStartMatch = () => {
+  const handleStartMatch = async () => {
     if (isTeamsValid() && typeof overs === 'number' && typeof playersPerTeam === 'number') {
-      createMatch({
-        teams,
-        overs,
-        playersPerTeam,
-        hasJoker,
-        jokerName: hasJoker ? jokerName : undefined,
-        isSingleSide,
-        currentInning: 1,
-        innings: [],
-        status: 'active',
-      });
-              navigate('/toss');
+      try {
+        await createMatch({
+          teams,
+          overs,
+          playersPerTeam,
+          hasJoker,
+          jokerName: hasJoker ? jokerName : undefined,
+          isSingleSide,
+          currentInning: 1,
+          innings: [],
+          status: 'active',
+        }, currentUser?.uid, isGuest);
+        navigate('/toss');
+      } catch (error) {
+        console.error('Failed to create match:', error);
+        // Handle error - maybe show a toast or alert
+      }
     }
   };
 

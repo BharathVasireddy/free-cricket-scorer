@@ -1,15 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
+import { saveMatch } from '../lib/matchService';
 
 const WinnerPage: React.FC = () => {
   const navigate = useNavigate();
   const { match } = useMatchStore();
+  const [matchCode, setMatchCode] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>('');
 
   if (!match || match.status !== 'completed') {
     navigate('/setup');
     return null;
   }
+
+  // Auto-save match to Firebase when component loads
+  useEffect(() => {
+    const saveMatchData = async () => {
+      if (match && !matchCode && !isSaving) {
+        setIsSaving(true);
+        try {
+          const code = await saveMatch(match);
+          setMatchCode(code);
+          console.log('Match saved successfully with code:', code);
+        } catch (error) {
+          console.error('Failed to save match:', error);
+          setSaveError('Failed to save match to cloud');
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    };
+
+    saveMatchData();
+  }, [match, matchCode, isSaving]);
 
   const firstInnings = match.innings[0];
   const secondInnings = match.innings[1];
@@ -19,7 +44,7 @@ const WinnerPage: React.FC = () => {
   const handleShareScorecard = async () => {
     const matchSummary = `🏏 ${match.teams[0].name} vs ${match.teams[1].name}
 ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInnings.totalBalls / 6)}.${firstInnings.totalBalls % 6}) vs ${secondInnings.totalRuns}/${secondInnings.totalWickets} (${Math.floor(secondInnings.totalBalls / 6)}.${secondInnings.totalBalls % 6})
-🏆 ${match.winner}${match.winMargin ? ` by ${match.winMargin}` : ''}`;
+🏆 ${match.winner}${match.winMargin ? ` by ${match.winMargin}` : ''}${matchCode ? `\n📋 Match Code: ${matchCode}` : ''}`;
 
     if (navigator.share) {
       try {
@@ -121,6 +146,43 @@ ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInning
             </div>
           </div>
         </div>
+
+        {/* Match Code */}
+        {matchCode && (
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">🏆 Match Saved!</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-gray-600">Your match code:</div>
+                <div className="text-2xl font-bold text-green-600 font-mono">{matchCode}</div>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(matchCode)}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+              >
+                Copy Code
+              </button>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Share this code with others to view this match anytime!
+            </div>
+          </div>
+        )}
+
+        {isSaving && (
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <div className="flex items-center space-x-2">
+              <div className="animate-spin text-blue-600">⏳</div>
+              <span className="text-blue-700">Saving match to cloud...</span>
+            </div>
+          </div>
+        )}
+
+        {saveError && (
+          <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+            <div className="text-red-700">⚠️ {saveError}</div>
+          </div>
+        )}
 
         {/* Match Info */}
         <div className="bg-white rounded-lg p-4">

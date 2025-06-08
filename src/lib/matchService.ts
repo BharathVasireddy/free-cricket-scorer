@@ -389,4 +389,39 @@ export const subscribeToMatch = (matchId: string, callback: (match: Match | null
     console.error('❌ Real-time listener error:', error.code || error.message);
     callback(null);
   });
+};
+
+// Simple test function to verify Firestore API is working
+export const testFirestoreAPIEnabled = async (): Promise<{ enabled: boolean; message: string }> => {
+  try {
+    console.log('🧪 Testing if Firestore API is enabled...');
+    
+    // Try a very simple read operation
+    const testCollection = collection(db, 'test');
+    const testQuery = query(testCollection, limit(1));
+    
+    await getDocs(testQuery);
+    
+    console.log('✅ Firestore API is enabled and working!');
+    return { enabled: true, message: 'Firestore API is enabled and working!' };
+  } catch (error: any) {
+    console.error('❌ Firestore API test failed:', error.code, error.message);
+    
+    if (error.code === 'permission-denied') {
+      return { 
+        enabled: true, 
+        message: 'API enabled but needs security rules setup' 
+      };
+    } else if (error.message?.includes('has not been used') || error.message?.includes('API')) {
+      return { 
+        enabled: false, 
+        message: 'Firestore API is not enabled. Please enable it in Google Cloud Console.' 
+      };
+    } else {
+      return { 
+        enabled: false, 
+        message: `API test failed: ${error.message}` 
+      };
+    }
+  }
 }; 

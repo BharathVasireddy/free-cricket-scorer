@@ -31,7 +31,7 @@ function App() {
             <Route path="/scorecard" element={<ScorecardPage />} />
             <Route path="/matches" element={<MatchHistoryPage />} />
           </Routes>
-        </div>
+      </div>
       </Router>
     </AuthProvider>
   );

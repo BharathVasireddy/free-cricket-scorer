@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Matches collection rules
+    match /matches/{matchId} {
+      // Allow read access to:
+      // 1. Public matches (isPublic = true)
+      // 2. Private matches by the owner (userId = request.auth.uid)
+      // 3. Guest users can read public matches
+      allow read: if resource.data.isPublic == true 
+                  || (request.auth != null && resource.data.userId == request.auth.uid);
+      
+      // Allow write access to:
+      // 1. Authenticated users for their own matches
+      // 2. Guest users for public matches
+      allow write: if (request.auth != null && request.auth.uid == resource.data.userId)
+                   || (request.auth == null && resource.data.isPublic == true);
+      
+      // Allow create access to:
+      // 1. Authenticated users
+      // 2. Guest users (with isGuest = true and isPublic = true)
+      allow create: if (request.auth != null && request.auth.uid == request.resource.data.userId)
+                    || (request.auth == null && request.resource.data.isGuest == true && request.resource.data.isPublic == true);
+    }
+    
+    // Test collection for connection testing (allow read for everyone)
+    match /_test_/{document} {
+      allow read: if true;
+    }
+    
+    // Allow test collection reads for connection testing
+    match /test/{document} {
+      allow read: if true;
+    }
+  }
+} 

@@ -29,16 +29,39 @@ const MatchHistoryPage: React.FC = () => {
     setError('');
     
     try {
-      const [privateData, communityData] = await Promise.all([
+      console.log('⚡ Loading matches with optimized service...');
+      
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [privateResult, communityResult] = await Promise.allSettled([
         currentUser && !isGuest ? getUserMatches(currentUser.uid) : Promise.resolve([]),
         getCommunityMatches()
       ]);
       
+      // Handle private matches result
+      const privateData = privateResult.status === 'fulfilled' ? privateResult.value : [];
+      if (privateResult.status === 'rejected') {
+        console.warn('Failed to load private matches:', privateResult.reason);
+      }
+      
+      // Handle community matches result
+      const communityData = communityResult.status === 'fulfilled' ? communityResult.value : [];
+      if (communityResult.status === 'rejected') {
+        console.warn('Failed to load community matches:', communityResult.reason);
+      }
+      
       setPrivateMatches(privateData);
       setCommunityMatches(communityData);
+      
+      console.log('📊 Loaded:', privateData.length, 'private matches,', communityData.length, 'community matches');
+      
+      // Only show error if both failed
+      if (privateResult.status === 'rejected' && communityResult.status === 'rejected') {
+        setError('Unable to load matches. Please check your connection and try again.');
+      }
+      
     } catch (error: any) {
-      console.error('Error loading matches:', error);
-      setError('Failed to load matches');
+      console.error('❌ Error loading matches:', error);
+      setError(`Failed to load matches: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -84,180 +107,144 @@ const MatchHistoryPage: React.FC = () => {
     return `${firstInnings.totalRuns}/${firstInnings.totalWickets} vs ${secondInnings.totalRuns}/${secondInnings.totalWickets}`;
   };
 
-  const MatchCard = ({ match }: { match: Match & { id: string } }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-3">
+  const renderMatchCard = (match: Match & { id: string }) => (
+    <div key={match.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+      <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 text-lg">
-            {match.teams[0]?.name} vs {match.teams[1]?.name}
+          <h3 className="font-semibold text-gray-800">
+            {match.teams[0].name} vs {match.teams[1].name}
           </h3>
-          <p className="text-sm text-gray-600">
-            {match.overs} overs • {match.playersPerTeam} players • {match.isSingleSide ? 'Single Side' : 'Standard'}
-            {match.hasJoker && ' • Joker'}
-          </p>
+          <p className="text-sm text-gray-600">{formatDate(match.createdAt)}</p>
         </div>
         <div className="text-right">
-          <div className="text-sm text-gray-500">{formatDate(match.createdAt)}</div>
-          {(match as any).matchCode && (
-            <div className="text-xs text-blue-600 font-mono mt-1">{(match as any).matchCode}</div>
-          )}
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            match.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {match.status === 'completed' ? 'Completed' : 'In Progress'}
+          </span>
         </div>
       </div>
       
-      <div className="mb-3">
-        <div className="text-lg font-semibold text-gray-900">{getMatchScore(match)}</div>
-        <div className={`text-sm font-medium ${
-          match.status === 'completed' ? 'text-green-600' : 'text-orange-600'
-        }`}>
-          {getMatchResult(match)}
-        </div>
+      <div className="mb-2">
+        <p className="text-lg font-medium text-gray-900">{getMatchScore(match)}</p>
+        <p className="text-sm text-gray-600">{getMatchResult(match)}</p>
       </div>
       
-      {match.status === 'completed' && (
-        <button
-          onClick={() => {
-            // Set match in store and navigate to scorecard
-            // For now, just show alert with match code
-            alert(`Match Code: ${(match as any).matchCode || 'N/A'}\nView full scorecard functionality coming soon!`);
-          }}
-          className="w-full bg-cricket-blue text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-        >
-          View Scorecard
-        </button>
-      )}
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <span>{match.format} • {match.overs} overs</span>
+        {match.matchCode && (
+          <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+            Code: {match.matchCode}
+          </span>
+        )}
+      </div>
     </div>
   );
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin text-4xl mb-4">🏏</div>
-          <p className="text-gray-600">Loading matches...</p>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="animate-spin text-4xl mb-4">⚡</div>
+          <p className="text-gray-600 mb-2">Loading matches...</p>
+          <div className="text-sm text-blue-600">Using optimized loading</div>
         </div>
       </div>
     );
   }
 
+  const currentMatches = activeTab === 'private' ? privateMatches : communityMatches;
+  const hasMatches = currentMatches.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="p-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-          >
-            ← Back
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">Match History</h1>
-          <div className="w-12"></div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Match History</h1>
+          <p className="text-gray-600">View and manage your cricket matches</p>
         </div>
-        
-        {/* Tabs */}
-        <div className="px-4">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            {!isGuest && (
+
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <span className="text-red-600 mr-2">⚠️</span>
+              <p className="text-red-700">{error}</p>
+              <button
+                onClick={loadMatches}
+                className="ml-auto bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('private')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'private'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'border-cricket-blue text-cricket-blue'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                🔒 My Matches ({privateMatches.length})
+                My Matches ({privateMatches.length})
               </button>
-            )}
-            <button
-              onClick={() => setActiveTab('community')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'community'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              👥 Community ({communityMatches.length})
-            </button>
+              <button
+                onClick={() => setActiveTab('community')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'community'
+                    ? 'border-cricket-blue text-cricket-blue'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Community Matches ({communityMatches.length})
+              </button>
+            </nav>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-red-700">{error}</p>
-            <button
-              onClick={loadMatches}
-              className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
-            >
-              Try Again
-            </button>
+        {/* Matches Grid */}
+        {hasMatches ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentMatches.map(renderMatchCard)}
           </div>
-        )}
-
-        {activeTab === 'private' && !isGuest && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">🔒 Your Private Matches</h2>
-              <p className="text-sm text-gray-600">
-                Matches saved to your private account • Only you can see these
-              </p>
-            </div>
-            
-            {privateMatches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">🏏</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No private matches yet</h3>
-                <p className="text-gray-600 mb-4">Start a new match while logged in to save it privately</p>
-                <button
-                  onClick={() => navigate('/setup')}
-                  className="bg-cricket-blue text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Start New Match
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {privateMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🏏</div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">
+              {activeTab === 'private' ? 'No matches yet' : 'No community matches'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {activeTab === 'private' 
+                ? 'Start scoring your first cricket match!'
+                : 'No community matches available at the moment.'
+              }
+            </p>
+            {activeTab === 'private' && (
+              <button
+                onClick={() => navigate('/setup')}
+                className="bg-cricket-blue text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Start New Match
+              </button>
             )}
           </div>
         )}
 
-        {activeTab === 'community' && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">👥 Community Matches</h2>
-              <p className="text-sm text-gray-600">
-                Public matches from guest users • Anyone can view these
-              </p>
-            </div>
-            
-            {communityMatches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">👥</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No community matches yet</h3>
-                <p className="text-gray-600 mb-4">Guest users' matches will appear here</p>
-                <button
-                  onClick={() => navigate('/auth')}
-                  className="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Play as Guest to Contribute
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {communityMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Quick Actions */}
+        <div className="fixed bottom-6 right-6">
+          <button
+            onClick={() => navigate('/setup')}
+            className="bg-cricket-blue text-white w-14 h-14 rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+            title="Start New Match"
+          >
+            <span className="text-2xl">+</span>
+          </button>
+        </div>
       </div>
     </div>
   );

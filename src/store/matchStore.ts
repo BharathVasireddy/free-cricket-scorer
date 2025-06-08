@@ -1052,9 +1052,9 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     try {
       await updateMatchRealtime(state.firebaseDocId, state.match);
       set({ lastSaveTime: new Date() });
-      console.log('Match saved to Firebase at:', new Date().toISOString());
+      console.log('⚡ Match saved to Firebase at:', new Date().toISOString());
     } catch (error: any) {
-      console.error('Failed to save match to Firebase:', error);
+      console.error('❌ Failed to save match to Firebase:', error.code || error.message);
       set({ error: 'Failed to save match - will retry' });
     }
   },

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isLoading, logout } = useAuth();
+  const { currentUser, isLoading, logout, isGuest } = useAuth();
 
   useEffect(() => {
     // Redirect to auth page if not authenticated
@@ -77,7 +77,7 @@ const WelcomePage: React.FC = () => {
           >
             <div className="flex items-center justify-center space-x-3">
               <span className="text-xl">📊</span>
-              <span className="text-lg">View Past Matches</span>
+                              <span className="text-lg">{isGuest ? 'Explore Community' : 'My Dashboard'}</span>
             </div>
           </button>
         </div>

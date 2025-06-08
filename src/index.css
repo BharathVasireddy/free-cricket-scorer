@@ -24,19 +24,19 @@
   
   .score-button {
     @apply bg-white border-2 border-gray-300 text-gray-900 font-bold text-xl w-16 h-16 rounded-full hover:bg-gray-50 active:bg-gray-100 transition-colors;
-  }
-  
+}
+
   .score-button.active {
     @apply bg-cricket-blue text-white border-cricket-blue;
-  }
+}
   
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
-  }
-  
+}
+
   .input-field {
     @apply border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cricket-blue focus:border-transparent;
-  }
+}
 }
 
 /* Coin Flip Animation */
@@ -75,13 +75,13 @@
   }
   10% {
     transform: rotateY(180deg) translateY(-20px) scale(1.05);
-  }
+}
   25% {
     transform: rotateY(900deg) translateY(-60px) scale(1.1);
   }
   50% {
     transform: rotateY(1800deg) translateY(-40px) scale(1.15);
-  }
+}
   75% {
     transform: rotateY(2700deg) translateY(-60px) scale(1.1);
   }
@@ -90,7 +90,7 @@
   }
   100% {
     transform: rotateY(3600deg) translateY(0px) scale(1);
-  }
+}
 }
 
 /* Bounce effect when coin lands */

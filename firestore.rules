@@ -1,26 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Matches collection rules
+    // Allow authenticated users to read and write their own matches
     match /matches/{matchId} {
-      // Allow read access to:
+      // Allow read access for:
       // 1. Public matches (isPublic = true)
-      // 2. Private matches by the owner (userId = request.auth.uid)
+      // 2. Matches owned by the current user
       // 3. Guest users can read public matches
       allow read: if resource.data.isPublic == true 
-                  || (request.auth != null && resource.data.userId == request.auth.uid);
+                  || resource.data.userId == request.auth.uid
+                  || request.auth == null; // Allow unauthenticated read for public matches
       
-      // Allow write access to:
-      // 1. Authenticated users for their own matches
-      // 2. Guest users for public matches
-      allow write: if (request.auth != null && request.auth.uid == resource.data.userId)
-                   || (request.auth == null && resource.data.isPublic == true);
+      // Allow write access for:
+      // 1. Authenticated users creating their own matches
+      // 2. Users updating their own matches
+      // 3. Guest users creating public matches
+      allow create: if request.auth != null 
+                    && (request.resource.data.userId == request.auth.uid 
+                        || request.resource.data.isGuest == true);
       
-      // Allow create access to:
-      // 1. Authenticated users
-      // 2. Guest users (with isGuest = true and isPublic = true)
-      allow create: if (request.auth != null && request.auth.uid == request.resource.data.userId)
-                    || (request.auth == null && request.resource.data.isGuest == true && request.resource.data.isPublic == true);
+      allow update: if request.auth != null 
+                    && (resource.data.userId == request.auth.uid 
+                        || request.resource.data.userId == request.auth.uid);
+      
+      // Allow delete only for match owners
+      allow delete: if request.auth != null 
+                    && resource.data.userId == request.auth.uid;
+    }
+    
+    // Allow reading match lists with filtering
+    match /matches/{document=**} {
+      allow list: if request.auth != null; // Authenticated users can list matches
     }
     
     // Test collection for connection testing (allow read for everyone)

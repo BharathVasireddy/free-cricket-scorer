@@ -156,3 +156,40 @@
     transform: translateY(0px) scale(1);
   }
 }
+
+/* Mobile app dashboard styles */
+.mobile-card {
+  @apply bg-white rounded-2xl shadow-sm border border-gray-100 transition-all active:scale-95;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-button {
+  @apply transition-all duration-200 active:scale-95;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Bottom navigation safe area for iOS */
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prevent overscroll bounce on iOS */
+.prevent-overscroll {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile viewport optimizations */
+@media (max-width: 640px) {
+  .text-4xl { font-size: 2rem; }
+  .text-3xl { font-size: 1.75rem; }
+  .text-2xl { font-size: 1.5rem; }
+  .text-xl { font-size: 1.25rem; }
+  
+  /* Larger touch targets on mobile */
+  .mobile-touch {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}

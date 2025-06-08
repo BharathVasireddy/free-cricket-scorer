@@ -7,8 +7,9 @@ const firebaseConfig = {
   authDomain: "free-cricket-scorer.firebaseapp.com",
   projectId: "free-cricket-scorer",
   storageBucket: "free-cricket-scorer.firebasestorage.app",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456"
+  messagingSenderId: "420193355868",
+  appId: "1:420193355868:web:1066766bb0d322583f7e99",
+  measurementId: "G-X39RYZ2DL4"
 };
 
 // Initialize Firebase

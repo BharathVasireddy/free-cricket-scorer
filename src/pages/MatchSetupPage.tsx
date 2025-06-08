@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
 import { useAuth } from '../contexts/AuthContext';
 import type { Team, Player } from '../types';
+import { Home, PlusCircle, ListTodo, UserCircle } from 'lucide-react';
 
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -150,9 +151,9 @@ const MatchSetupPage: React.FC = () => {
 
   if (currentStep === 'basic') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col pb-safe">
         {/* Header */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between flex-shrink-0">
           <button
             onClick={() => navigate('/')}
             className="text-white/80 hover:text-white text-sm font-medium"
@@ -180,16 +181,15 @@ const MatchSetupPage: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 bg-white rounded-t-3xl p-6 overflow-y-auto">
+        <div className="flex-1 bg-white rounded-t-3xl p-6 overflow-y-auto pb-24">
           <div className="max-w-md mx-auto space-y-6">
-            
             {/* Match Format */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">🏏 Match Format</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">Match Format</h2>
               
               {/* Overs */}
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="form-label">
                   Number of Overs
                 </label>
                 <input
@@ -198,15 +198,15 @@ const MatchSetupPage: React.FC = () => {
                   max="50"
                   value={overs}
                   onChange={(e) => setOvers(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-cricket-blue focus:outline-none text-center text-xl font-bold"
+                  className="input-field-large w-full text-center"
                   placeholder="Enter overs (1-50)"
                 />
-                <p className="text-xs text-gray-500 mt-1 text-center">1-50 overs per innings</p>
+                <p className="helper-text text-center">1-50 overs per innings</p>
               </div>
 
               {/* Players per team */}
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="form-label">
                   Players per Team
                 </label>
                 <input
@@ -215,10 +215,10 @@ const MatchSetupPage: React.FC = () => {
                   max="11"
                   value={playersPerTeam}
                   onChange={(e) => handlePlayersPerTeamChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-cricket-blue focus:outline-none text-center text-xl font-bold"
+                  className="input-field-large w-full text-center"
                   placeholder="Enter players (3-11)"
                 />
-                <p className="text-xs text-gray-500 mt-1 text-center">3-11 players (standard: 11)</p>
+                <p className="helper-text text-center">3-11 players (standard: 11)</p>
               </div>
             </div>
 
@@ -272,26 +272,25 @@ const MatchSetupPage: React.FC = () => {
                 </div>
               </div>
 
-                             {/* Joker Rule */}
+                               {/* Joker Rule */}
                <div className={(typeof playersPerTeam === 'number' && playersPerTeam >= 11) ? 'opacity-50 pointer-events-none' : ''}>
                  <div className="flex items-center justify-between mb-3">
-                   <label className="text-sm font-semibold text-gray-700">
+                   <label className="form-label mb-0">
                      🃏 Joker Player (Plays Both Sides)
                    </label>
                    <button
+                     type="button"
                      onClick={() => (typeof playersPerTeam !== 'number' || playersPerTeam < 11) && setHasJoker(!hasJoker)}
                      disabled={typeof playersPerTeam === 'number' && playersPerTeam >= 11}
-                     className={`w-12 h-6 rounded-full transition-all ${
-                       hasJoker ? 'bg-yellow-500' : 'bg-gray-300'
-                     }`}
+                     className="toggle-switch"
+                     data-checked={hasJoker}
+                     aria-pressed={hasJoker}
                    >
-                     <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                       hasJoker ? 'translate-x-6' : 'translate-x-0.5'
-                     }`}></div>
+                     <div className="toggle-switch-handle"></div>
                    </button>
                  </div>
                  {(typeof playersPerTeam === 'number' && playersPerTeam >= 11) && (
-                   <p className="text-xs text-gray-500 mt-1">
+                   <p className="helper-text">
                      Joker disabled with 11+ players per team
                    </p>
                  )}
@@ -302,16 +301,15 @@ const MatchSetupPage: React.FC = () => {
                       type="text"
                       value={jokerName}
                       onChange={(e) => {
-                        // Convert joker name to ALL UPPERCASE
                         const uppercaseName = e.target.value.toUpperCase();
                         setJokerName(uppercaseName);
                       }}
-                      className="w-full p-3 border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none"
+                      className="input-field w-full"
                       placeholder="Enter joker player name"
                     />
-                                         <p className="text-xs text-yellow-700 mt-1">
-                       Extra player who can bat and bowl for both teams when needed!
-                     </p>
+                    <p className="helper-text">
+                      Extra player who can bat and bowl for both teams when needed!
+                    </p>
                   </div>
                 )}
               </div>
@@ -321,11 +319,7 @@ const MatchSetupPage: React.FC = () => {
             <button
               onClick={proceedToTeams}
               disabled={!isBasicValid()}
-              className={`w-full py-4 rounded-xl text-lg font-bold transition-all ${
-                isBasicValid()
-                  ? 'bg-cricket-blue text-white hover:bg-blue-700 shadow-lg' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className={isBasicValid() ? 'btn-primary w-full py-4 text-lg' : 'btn-secondary w-full py-4 text-lg'}
             >
               Continue to Teams →
             </button>
@@ -337,9 +331,9 @@ const MatchSetupPage: React.FC = () => {
 
   // Teams Setup Step
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col pb-safe">
       {/* Header */}
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between flex-shrink-0">
         <button
           onClick={() => setCurrentStep('basic')}
           className="text-white/80 hover:text-white text-sm font-medium"
@@ -367,25 +361,26 @@ const MatchSetupPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 bg-white rounded-t-3xl overflow-hidden flex flex-col">
+      <div className="flex-1 bg-white rounded-t-3xl overflow-hidden flex flex-col pb-24">
         {/* Match Summary */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b">
-          <div className="flex justify-center items-center space-x-4 text-sm">
-            <span className="font-semibold text-gray-700">{typeof overs === 'number' ? overs : '?'} overs</span>
-            <span className="text-gray-400">•</span>
-            <span className="font-semibold text-gray-700">{typeof playersPerTeam === 'number' ? playersPerTeam : '?'} players</span>
-            <span className="text-gray-400">•</span>
-            <span className="font-semibold text-gray-700">
-              {isSingleSide ? 'Single Batsman' : 'Pair Batting'}
-            </span>
-            {hasJoker && (
-              <>
-                <span className="text-gray-400">•</span>
-                <span className="font-semibold text-yellow-600">🃏 {jokerName} (Extra)</span>
-              </>
-            )}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b flex-shrink-0">
+          <div className="max-w-md mx-auto text-center">
+            <div className="flex justify-center items-center space-x-4 text-sm">
+              <span className="font-semibold text-gray-700">{typeof overs === 'number' ? overs : '?'} overs</span>
+              <span className="text-gray-400">•</span>
+              <span className="font-semibold text-gray-700">{typeof playersPerTeam === 'number' ? playersPerTeam : '?'} players</span>
+              <span className="text-gray-400">•</span>
+              <span className="font-semibold text-gray-700">
+                {isSingleSide ? 'Single Batsman' : 'Pair Batting'}
+              </span>
+              {hasJoker && (
+                <>
+                  <span className="text-gray-400">•</span>
+                  <span className="font-semibold text-yellow-600">🃏 {jokerName} (Extra)</span>
+                </>
+              )}
+            </div>
           </div>
-
         </div>
 
         {/* Teams Input */}
@@ -428,7 +423,7 @@ const MatchSetupPage: React.FC = () => {
                           type="text"
                           value={player.name}
                           onChange={(e) => handlePlayerNameChange(teamIndex, playerIndex, e.target.value)}
-                          className="flex-1 p-3 border-2 border-gray-200 rounded-lg focus:border-cricket-blue focus:outline-none"
+                          className="input-field flex-1"
                           placeholder={`Player ${playerIndex + 1} name`}
                         />
                       </div>
@@ -445,11 +440,7 @@ const MatchSetupPage: React.FC = () => {
           <button
             onClick={handleStartMatch}
             disabled={!isTeamsValid()}
-            className={`w-full py-4 rounded-xl text-lg font-bold transition-all ${
-              isTeamsValid()
-                ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className={isTeamsValid() ? 'btn-success w-full py-4 text-lg' : 'btn-secondary w-full py-4 text-lg'}
           >
             🏏 Start Match
           </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -59,8 +60,18 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    // Update URL without navigation
+    const newMode = !isLogin ? 'signin' : 'signup';
+    const url = new URL(window.location.href);
+    url.searchParams.set('mode', newMode);
+    window.history.replaceState({}, '', url.toString());
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex items-center justify-center p-4 pb-safe">
       <div className="max-w-md w-full">
         {/* Header with Back Button */}
         <div className="mb-8">
@@ -68,7 +79,7 @@ const AuthPage: React.FC = () => {
             onClick={handleBack}
             className="text-white/80 hover:text-white mb-6 flex items-center text-sm font-medium touch-target"
           >
-            <span className="text-lg mr-1">←</span>
+            <ArrowLeft size={16} className="mr-1" />
             Back
           </button>
           
@@ -94,7 +105,7 @@ const AuthPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
               <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="displayName" className="form-label">
                   Full Name
                 </label>
                 <input
@@ -102,7 +113,7 @@ const AuthPage: React.FC = () => {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent transition-colors"
+                  className="input-field w-full"
                   placeholder="Enter your full name"
                   required
                 />
@@ -110,7 +121,7 @@ const AuthPage: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="form-label">
                 Email Address
               </label>
               <input
@@ -118,14 +129,14 @@ const AuthPage: React.FC = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent transition-colors"
+                className="input-field w-full"
                 placeholder="Enter your email"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="form-label">
                 Password
               </label>
               <input
@@ -133,7 +144,7 @@ const AuthPage: React.FC = () => {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cricket-blue focus:border-transparent transition-colors"
+                className="input-field w-full"
                 placeholder="Enter your password"
                 required
                 minLength={6}
@@ -143,30 +154,19 @@ const AuthPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-cricket-blue text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-cricket-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-target"
+              className="w-full bg-cricket-blue text-white py-3 rounded-xl font-semibold hover:bg-cricket-blue/90 transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {isLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                  // Update URL without navigation
-                  const newMode = !isLogin ? 'signin' : 'signup';
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('mode', newMode);
-                  window.history.replaceState({}, '', url.toString());
-                }}
-                className="text-cricket-blue hover:text-blue-700 font-medium touch-target"
-              >
-                {isLogin ? 'Create Account' : 'Sign In'}
-              </button>
-            </p>
+            <button
+              onClick={toggleMode}
+              className="text-sm text-gray-600 hover:text-cricket-blue transition-colors"
+            >
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
           </div>
 
           <div className="mt-6">

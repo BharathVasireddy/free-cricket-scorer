@@ -61,7 +61,7 @@ const PlayerSelectionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-600 to-green-800 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-green-600 to-green-800 flex flex-col pb-safe">
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
         <button

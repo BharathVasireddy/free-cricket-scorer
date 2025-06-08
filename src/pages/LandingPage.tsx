@@ -83,7 +83,7 @@ const LandingPage: React.FC = () => {
         }}
       />
 
-      <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue">
+      <div className="min-h-screen bg-gradient-to-br from-cricket-green to-cricket-blue pb-safe">
         {/* Navigation */}
         <nav className="p-4 lg:p-6 flex justify-between items-center">
           <div className="text-white text-xl lg:text-2xl font-bold">

@@ -77,7 +77,7 @@ ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInning
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-safe">
       {/* Winner Announcement */}
       <div className={`bg-gradient-to-r ${getWinnerColor()} px-4 py-12 text-white text-center`}>
         <div className="max-w-md mx-auto">

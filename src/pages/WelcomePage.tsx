@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserMatches } from '../lib/matchService';
 import type { FirebaseMatch } from '../types';
+import { useMatchStore } from '../store/matchStore';
+import { Home, PlusSquare, ClipboardList, LogOut, Zap, BarChart3, Settings, Trophy } from 'lucide-react';
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -94,16 +96,14 @@ const WelcomePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-safe">
       {/* Mobile App Header */}
       <div className="bg-white shadow-sm">
-        <div className="px-4 py-4">
+        <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-cricket-blue to-blue-600 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
-                </svg>
+              <div className="w-9 h-9 bg-gradient-to-r from-cricket-blue to-blue-600 rounded-xl flex items-center justify-center">
+                <Trophy size={18} className="text-white" />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">Cricket Scorer</h1>
@@ -116,9 +116,7 @@ const WelcomePage: React.FC = () => {
               onClick={handleLogout}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <LogOut size={18} className="text-gray-400" />
             </button>
           </div>
         </div>
@@ -133,10 +131,8 @@ const WelcomePage: React.FC = () => {
               <h2 className="text-xl font-bold mb-1">{getGreeting()}!</h2>
               <p className="text-blue-100">Ready to score some cricket?</p>
             </div>
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Zap size={24} className="text-white" />
             </div>
           </div>
         </div>
@@ -147,31 +143,27 @@ const WelcomePage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => navigate('/setup')}
-              className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all active:scale-95"
+              className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all active:scale-95"
             >
               <div className="text-center">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <PlusSquare size={18} className="text-white" />
                 </div>
-                <div className="font-bold text-base">New Match</div>
-                <div className="text-xs text-green-100 mt-1">Start scoring</div>
+                <div className="font-bold text-sm">New Match</div>
+                <div className="text-[10px] text-green-100 mt-0.5">Start scoring</div>
               </div>
             </button>
             
             <button
               onClick={() => navigate('/matches')}
-              className="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all active:scale-95"
+              className="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all active:scale-95"
             >
               <div className="text-center">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <ClipboardList size={18} className="text-white" />
                 </div>
-                <div className="font-bold text-base">My Matches</div>
-                <div className="text-xs text-purple-100 mt-1">View history</div>
+                <div className="font-bold text-sm">My Matches</div>
+                <div className="text-[10px] text-purple-100 mt-0.5">View history</div>
               </div>
             </button>
           </div>
@@ -261,7 +253,10 @@ const WelcomePage: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => navigate('/scorecard')}
+                      onClick={() => {
+                        useMatchStore.getState().loadMatch(match);
+                        navigate('/scorecard');
+                      }}
                       className="ml-4 bg-cricket-blue text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-600 transition-colors"
                     >
                       View
@@ -273,15 +268,13 @@ const WelcomePage: React.FC = () => {
           )}
         </div>
 
-        {/* App Features */}
+        {/* Features */}
         <div className="mb-8">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Features</h2>
           <div className="grid grid-cols-1 gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center">
+                <Zap size={18} className="text-white" />
               </div>
               <div>
                 <div className="font-bold text-gray-900">Real-time Scoring</div>
@@ -290,26 +283,12 @@ const WelcomePage: React.FC = () => {
             </div>
             
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+              <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
+                <BarChart3 size={18} className="text-white" />
               </div>
               <div>
                 <div className="font-bold text-gray-900">Detailed Statistics</div>
                 <div className="text-sm text-gray-600">Complete batting & bowling figures</div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-violet-500 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <div>
-                <div className="font-bold text-gray-900">Cloud Backup</div>
-                <div className="text-sm text-gray-600">Your matches are safely stored</div>
               </div>
             </div>
           </div>
@@ -320,9 +299,7 @@ const WelcomePage: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 bottom-nav">
         <div className="flex items-center justify-around">
           <button className="flex flex-col items-center space-y-1 text-cricket-blue">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-            </svg>
+            <Home size={18} className="text-cricket-blue" />
             <span className="text-xs font-medium">Home</span>
           </button>
           
@@ -330,9 +307,7 @@ const WelcomePage: React.FC = () => {
             onClick={() => navigate('/setup')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-green-500 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <PlusSquare size={18} className="text-gray-400" />
             <span className="text-xs font-medium">New</span>
           </button>
           
@@ -340,9 +315,7 @@ const WelcomePage: React.FC = () => {
             onClick={() => navigate('/matches')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-purple-500 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <ClipboardList size={18} className="text-gray-400" />
             <span className="text-xs font-medium">Matches</span>
           </button>
           
@@ -350,9 +323,7 @@ const WelcomePage: React.FC = () => {
             onClick={() => navigate('/profile')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-indigo-500 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+            <Settings size={18} className="text-gray-400" />
             <span className="text-xs font-medium">Profile</span>
           </button>
         </div>

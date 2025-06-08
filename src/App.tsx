@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
@@ -13,6 +13,7 @@ import WinnerPage from './pages/WinnerPage';
 import ScorecardPage from './pages/ScorecardPage';
 import MatchHistoryPage from './pages/MatchHistoryPage';
 import ProfilePage from './pages/ProfilePage';
+import BottomNav from './components/navigation/BottomNav';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -76,11 +77,25 @@ const RootRoute = () => {
   return currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/landing" replace />;
 };
 
+// Layout component to handle bottom navigation visibility
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const hideBottomNavPaths = ['/landing', '/auth', '/toss', '/live', '/winner', '/scorecard'];
+  const shouldShowBottomNav = !hideBottomNavPaths.includes(location.pathname);
+
+  return (
+    <>
+      {children}
+      {shouldShowBottomNav && <BottomNav />}
+    </>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <Layout>
           <Routes>
             {/* Root route - smart redirect */}
             <Route path="/" element={<RootRoute />} />
@@ -154,7 +169,7 @@ function App() {
               </ProtectedRoute>
             } />
           </Routes>
-        </div>
+        </Layout>
       </Router>
     </AuthProvider>
   );

@@ -2,26 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Cricket App Styles */
+/* Design System */
 @layer base {
+  :root {
+    /* Colors */
+    --color-cricket-blue: #1E40AF;
+    --color-cricket-green: #2D5016;
+    --color-cricket-red: #DC2626;
+    
+    /* Spacing */
+    --spacing-input: 0.75rem;
+    --spacing-button: 1rem;
+    --spacing-bottom-nav: calc(4rem + env(safe-area-inset-bottom, 0px)); /* Height of bottom nav + safe area */
+    
+    /* Border Radius */
+    --radius-sm: 0.375rem;    /* 6px */
+    --radius-md: 0.5rem;      /* 8px */
+    --radius-lg: 0.75rem;     /* 12px */
+    --radius-xl: 1rem;        /* 16px */
+    --radius-2xl: 1.5rem;     /* 24px */
+    --radius-full: 9999px;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-gray-50 text-gray-900;
     font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 400;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  }
+
+  /* Force Plus Jakarta Sans on all text elements */
+  * {
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   html {
-    font-family: 'Plus Jakarta Sans', sans-serif;
     -webkit-text-size-adjust: 100%;
     -moz-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-feature-settings: 'kern' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -55,48 +77,104 @@
 
   /* Force font rendering on all text elements */
   * {
-    font-family: inherit;
     -webkit-font-smoothing: inherit;
     -moz-osx-font-smoothing: inherit;
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
-  }
-  
-  .btn-danger {
-    @apply bg-cricket-red text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors;
-  }
-  
-  .score-button {
-    @apply bg-white border-2 border-gray-300 text-gray-900 font-bold text-xl w-16 h-16 rounded-full hover:bg-gray-50 active:bg-gray-100 transition-colors;
-}
-
-  .score-button.active {
-    @apply bg-cricket-blue text-white border-cricket-blue;
-}
-  
-  .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
-}
-
+  /* Input Fields */
   .input-field {
-    @apply border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cricket-blue focus:border-transparent;
-}
+    @apply bg-white h-12 px-4 border border-gray-300 rounded-xl text-base;
+    @apply focus:ring-2 focus:ring-cricket-blue focus:border-transparent focus:outline-none;
+    @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+    @apply placeholder:text-gray-400;
+  }
 
-  /* Touch-friendly targets for mobile app experience */
+  .input-field-large {
+    @apply input-field h-14 text-lg font-semibold;
+  }
+
+  /* Buttons */
+  .btn-base {
+    @apply h-12 px-6 rounded-xl font-semibold transition-all duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply active:scale-[0.98] touch-target;
+  }
+
+  .btn-primary {
+    @apply btn-base bg-cricket-blue text-white;
+    @apply hover:bg-blue-700 active:bg-blue-800;
+  }
+
+  .btn-secondary {
+    @apply btn-base bg-gray-100 text-gray-700;
+    @apply hover:bg-gray-200 active:bg-gray-300;
+  }
+
+  .btn-success {
+    @apply btn-base bg-cricket-green text-white;
+    @apply hover:bg-green-700 active:bg-green-800;
+  }
+
+  .btn-danger {
+    @apply btn-base bg-cricket-red text-white;
+    @apply hover:bg-red-700 active:bg-red-800;
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    @apply relative w-14 h-7 rounded-full transition-colors duration-200 cursor-pointer;
+  }
+
+  .toggle-switch-handle {
+    @apply absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-200;
+  }
+
+  .toggle-switch[data-checked="true"] {
+    @apply bg-yellow-500;
+  }
+
+  .toggle-switch[data-checked="true"] .toggle-switch-handle {
+    @apply translate-x-7;
+  }
+
+  .toggle-switch[data-checked="false"] {
+    @apply bg-gray-300;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6;
+  }
+
+  .card-hover {
+    @apply card hover:border-cricket-blue hover:shadow-md transition-all duration-200;
+  }
+
+  /* Touch Targets */
   .touch-target {
     @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
-    touch-action: manipulation; /* Improves tap responsiveness */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* App-like button styles */
+  /* Form Labels */
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  /* Section Headers */
+  .section-header {
+    @apply text-lg font-bold text-gray-900 mb-4;
+  }
+
+  /* Helper Text */
+  .helper-text {
+    @apply text-xs text-gray-500 mt-1;
+  }
+
+  /* Touch-friendly targets for mobile app experience */
   .app-button {
     @apply touch-target rounded-xl font-medium transition-all duration-200 active:scale-95;
     -webkit-tap-highlight-color: transparent; /* Remove iOS blue highlight */
@@ -361,4 +439,9 @@
   :root {
     color-scheme: dark;
   }
+}
+
+/* Add bottom padding for pages with bottom navigation */
+.pb-safe {
+  padding-bottom: var(--spacing-bottom-nav);
 }

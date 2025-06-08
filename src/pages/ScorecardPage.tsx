@@ -314,7 +314,7 @@ const ScorecardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-safe">
       {/* Header */}
       <div className="bg-white shadow-sm p-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
@@ -385,10 +385,14 @@ const ScorecardPage: React.FC = () => {
         <div className="p-4 pb-6">
           <button
             onClick={() => navigate('/live')}
-            className="w-full btn-primary py-4 text-lg font-semibold"
+            className="w-full btn-primary py-4 text-lg font-semibold flex items-center justify-center space-x-2"
           >
-            🏏 Continue Scoring
+            <span>🏏</span>
+            <span>Resume Match</span>
           </button>
+          <p className="text-center text-sm text-gray-500 mt-2">
+            Note: Matches are automatically abandoned after 1 hour of inactivity
+          </p>
         </div>
       )}
     </div>

@@ -70,7 +70,7 @@ const TossPage: React.FC = () => {
   const selectedTeamData = match.teams.find(t => t.id === selectedTeam);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700">
+    <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 pb-safe">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">

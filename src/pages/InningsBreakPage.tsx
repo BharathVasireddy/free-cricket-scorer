@@ -131,7 +131,7 @@ const InningsBreakPage: React.FC = () => {
   const bowlingStats = getBowlingStats();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-safe">
       {/* Header */}
       <div className="bg-white border-b px-4 py-4">
         <div className="flex justify-between items-center">

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Favicon Generator</title>
+</head>
+<body>
+    <h1>Cricket Favicon Generator</h1>
+    <p>This page generates PNG favicons from the SVG. Open browser console and run the generate() function.</p>
+    
+    <canvas id="canvas" style="border: 1px solid #ccc;"></canvas>
+    
+    <script>
+        function generateFavicon(size) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Draw cricket ball
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, (size/2) - 1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(1, size/16);
+            ctx.stroke();
+            
+            // Draw seam lines
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(1, size/20);
+            ctx.beginPath();
+            
+            // Curved seam
+            ctx.moveTo(size * 0.25, size/2);
+            ctx.quadraticCurveTo(size/2, size * 0.25, size * 0.75, size/2);
+            ctx.quadraticCurveTo(size/2, size * 0.75, size * 0.25, size/2);
+            ctx.stroke();
+            
+            // Add some texture dots
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            const dotSize = Math.max(1, size/32);
+            
+            // Corner dots
+            ctx.beginPath();
+            ctx.arc(size * 0.375, size * 0.375, dotSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(size * 0.625, size * 0.375, dotSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(size * 0.375, size * 0.625, dotSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(size * 0.625, size * 0.625, dotSize, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            return canvas.toDataURL('image/png');
+        }
+        
+        function downloadFavicon(size) {
+            const dataUrl = generateFavicon(size);
+            const link = document.createElement('a');
+            link.download = `cricket-icon-${size}.png`;
+            link.href = dataUrl;
+            link.click();
+        }
+        
+        function generate() {
+            console.log('Generating favicons...');
+            const sizes = [16, 32, 72, 96, 128, 144, 180, 192, 512];
+            
+            sizes.forEach(size => {
+                setTimeout(() => {
+                    downloadFavicon(size);
+                    console.log(`Generated ${size}x${size} favicon`);
+                }, size * 10); // Stagger downloads
+            });
+        }
+        
+        // Generate 32x32 preview on load
+        window.onload = () => {
+            generateFavicon(64);
+        };
+    </script>
+    
+    <p>Run <code>generate()</code> in console to download all favicon sizes.</p>
+</body>
+</html> 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Cricket Emoji Favicon</title>
+</head>
+<body>
+    <h1>Simple Cricket Emoji Favicon Generator</h1>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        function createEmojiFavicon() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = 32;
+            canvas.height = 32;
+            
+            // Draw emoji-style cricket ball
+            ctx.font = '28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏏', 16, 16);
+            
+            const dataURL = canvas.toDataURL('image/png');
+            console.log('Cricket emoji favicon data URI:');
+            console.log(dataURL);
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = 'cricket-emoji-favicon.png';
+            link.href = dataURL;
+            link.textContent = 'Download Cricket Emoji Favicon';
+            link.style.display = 'block';
+            link.style.marginTop = '10px';
+            document.body.appendChild(link);
+            
+            return dataURL;
+        }
+        
+        window.onload = createEmojiFavicon;
+    </script>
+</body>
+</html> 

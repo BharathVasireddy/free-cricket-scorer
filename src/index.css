@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Cricket App Styles */
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-cricket-blue text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+  }
+  
+  .btn-danger {
+    @apply bg-cricket-red text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors;
+  }
+  
+  .score-button {
+    @apply bg-white border-2 border-gray-300 text-gray-900 font-bold text-xl w-16 h-16 rounded-full hover:bg-gray-50 active:bg-gray-100 transition-colors;
+  }
+  
+  .score-button.active {
+    @apply bg-cricket-blue text-white border-cricket-blue;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+  
+  .input-field {
+    @apply border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cricket-blue focus:border-transparent;
+  }
+}
+
+/* Coin Flip Animation */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.coin {
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-in-out;
+}
+
+.coin.flipping {
+  animation: coinFlip 3s ease-in-out;
+}
+
+.coin-side {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.coin-heads {
+  transform: rotateY(0deg);
+}
+
+.coin-tails {
+  transform: rotateY(180deg);
+}
+
+@keyframes coinFlip {
+  0% {
+    transform: rotateY(0deg) translateY(0px) scale(1);
+  }
+  10% {
+    transform: rotateY(180deg) translateY(-20px) scale(1.05);
+  }
+  25% {
+    transform: rotateY(900deg) translateY(-60px) scale(1.1);
+  }
+  50% {
+    transform: rotateY(1800deg) translateY(-40px) scale(1.15);
+  }
+  75% {
+    transform: rotateY(2700deg) translateY(-60px) scale(1.1);
+  }
+  90% {
+    transform: rotateY(3420deg) translateY(-10px) scale(1.05);
+  }
+  100% {
+    transform: rotateY(3600deg) translateY(0px) scale(1);
+  }
+}
+
+/* Bounce effect when coin lands */
+.coin:not(.flipping) {
+  animation: coinLand 0.5s ease-out;
+}
+
+@keyframes coinLand {
+  0% {
+    transform: translateY(-10px) scale(1.05);
+  }
+  50% {
+    transform: translateY(5px) scale(0.95);
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+}

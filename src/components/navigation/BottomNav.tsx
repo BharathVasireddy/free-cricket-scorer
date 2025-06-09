@@ -11,9 +11,9 @@ const BottomNav: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 bottom-nav safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 z-50">
       <div className="max-w-md mx-auto px-4">
-        <div className="flex items-center justify-around py-1">
+        <div className="flex items-center justify-around py-2">
           <button 
             onClick={() => navigate('/dashboard')}
             className={`flex flex-col items-center py-2 px-3 transition-all ${
@@ -63,6 +63,8 @@ const BottomNav: React.FC = () => {
           </button>
         </div>
       </div>
+      {/* Safe area spacer for iPhone home indicator and Android navigation */}
+      <div className="h-[env(safe-area-inset-bottom)] bg-white/95"></div>
     </div>
   );
 };

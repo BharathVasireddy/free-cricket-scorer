@@ -34,7 +34,7 @@ const LandingPage: React.FC = () => {
             "@type": "WebApplication",
             "name": "Free Cricket Scorer",
             "description": "Professional cricket scoring made simple and free. Track live matches, manage player statistics, and never miss a ball.",
-            "url": "https://free-cricket-scorer.vercel.app",
+            "url": "https://cricket.cloud9digital.in",
             "applicationCategory": "SportsApplication",
             "operatingSystem": "Web Browser",
             "offers": {

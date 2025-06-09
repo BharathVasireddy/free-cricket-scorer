@@ -14,6 +14,10 @@
     --spacing-input: 0.75rem;
     --spacing-button: 1rem;
     --spacing-bottom-nav: calc(4rem + env(safe-area-inset-bottom, 0px)); /* Height of bottom nav + safe area */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
     
     /* Border Radius */
     --radius-sm: 0.375rem;    /* 6px */
@@ -32,6 +36,10 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Ensure body respects safe areas */
+    padding-top: var(--safe-area-inset-top);
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
   }
 
   /* Force Plus Jakarta Sans on all text elements */
@@ -46,6 +54,10 @@
     text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Full height for PWA */
+    height: 100%;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
   }
 
   /* iOS-specific font rendering fixes */
@@ -198,7 +210,7 @@
     @apply transition-all duration-300 ease-in-out;
   }
 
-  /* Mobile-optimized text selection */
+  /* Prevent text selection except where needed */
   .no-select {
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -206,68 +218,81 @@
     user-select: none;
   }
 
-  /* Better focus states for accessibility */
+  /* Focus ring for accessibility */
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+    @apply focus:ring-2 focus:ring-cricket-blue focus:ring-offset-2 focus:outline-none;
   }
 
-  /* Bottom navigation safe area for iOS */
-  .bottom-nav {
-    padding-bottom: env(safe-area-inset-bottom);
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
+  /* PWA safe area utilities */
+  .safe-top {
+    padding-top: var(--safe-area-inset-top);
   }
 
-  /* iOS-specific mobile optimizations */
-  @supports (-webkit-touch-callout: none) {
-    .bottom-nav {
-      padding-bottom: max(env(safe-area-inset-bottom), 16px);
-    }
-    
-    /* Prevent overscroll bounce on iOS */
-    body {
-      overscroll-behavior-y: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Better button touch handling on iOS */
-    .app-button {
-      -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
+  .safe-bottom {
+    padding-bottom: var(--safe-area-inset-bottom);
   }
 
-  /* Enhanced gradient backgrounds for mobile */
-  .gradient-bg {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  .safe-left {
+    padding-left: var(--safe-area-inset-left);
   }
 
-  .gradient-green {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  .safe-right {
+    padding-right: var(--safe-area-inset-right);
   }
 
-  .gradient-purple {
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  .safe-x {
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
   }
 
-  .gradient-orange {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  .safe-y {
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
   }
 
-  /* Card shadows optimized for mobile */
-  .card-shadow {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  .safe-all {
+    padding-top: var(--safe-area-inset-top);
+    padding-right: var(--safe-area-inset-right);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
   }
 
-  .card-shadow-hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  /* Bottom navigation with safe area */
+  .bottom-nav-height {
+    height: calc(4rem + var(--safe-area-inset-bottom));
   }
 
-  /* Text contrast improvements for mobile */
-  .text-enhanced {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  /* Page bottom padding to account for bottom nav */
+  .pb-bottom-nav {
+    padding-bottom: calc(4.5rem + var(--safe-area-inset-bottom));
+  }
+}
+
+@layer utilities {
+  /* PWA-specific utilities */
+  .h-screen-safe {
+    height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  }
+
+  .min-h-screen-safe {
+    min-height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  }
+
+  .max-h-screen-safe {
+    max-height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  }
+
+  /* Viewport height with safe area considerations */
+  .h-dvh-safe {
+    height: calc(100dvh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  }
+
+  .min-h-dvh-safe {
+    min-height: calc(100dvh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  }
+
+  .pb-safe {
+    padding-bottom: calc(4.5rem + var(--safe-area-inset-bottom));
   }
 }
 

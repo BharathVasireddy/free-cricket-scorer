@@ -17,12 +17,12 @@ const MatchSetupPage: React.FC = () => {
       players: []
     },
     {
-      id: 'team2', 
+      id: 'team2',
       name: '',
       players: []
     }
   ]);
-  
+
   const [overs, setOvers] = useState<number | ''>('');
   const [playersPerTeam, setPlayersPerTeam] = useState<number | ''>('');
   const [hasJoker, setHasJoker] = useState<boolean>(false);
@@ -32,14 +32,14 @@ const MatchSetupPage: React.FC = () => {
 
   // Form validation
   const isBasicValid = () => {
-    return typeof overs === 'number' && overs >= 1 && overs <= 50 && 
-           typeof playersPerTeam === 'number' && playersPerTeam >= 3 && playersPerTeam <= 11 &&
-           (!hasJoker || (hasJoker && jokerName.trim() !== ''));
+    return typeof overs === 'number' && overs >= 1 && overs <= 50 &&
+      typeof playersPerTeam === 'number' && playersPerTeam >= 3 && playersPerTeam <= 11 &&
+      (!hasJoker || (hasJoker && jokerName.trim() !== ''));
   };
 
   const isTeamsValid = () => {
-    return typeof playersPerTeam === 'number' && teams.every(team => 
-      team.name.trim() !== '' && 
+    return typeof playersPerTeam === 'number' && teams.every(team =>
+      team.name.trim() !== '' &&
       team.players.length === playersPerTeam &&
       team.players.every(player => player.name.trim() !== '')
     );
@@ -48,7 +48,7 @@ const MatchSetupPage: React.FC = () => {
   const handlePlayerNameChange = (teamIndex: number, playerIndex: number, name: string) => {
     // Convert player names to ALL UPPERCASE
     const uppercaseName = name.toUpperCase();
-    
+
     setTeams(prev => prev.map((team, tIndex) => {
       if (tIndex === teamIndex) {
         const updatedPlayers = [...team.players];
@@ -65,8 +65,8 @@ const MatchSetupPage: React.FC = () => {
   const handleTeamNameChange = (teamIndex: number, name: string) => {
     // Convert team names to ALL UPPERCASE
     const uppercaseName = name.toUpperCase();
-    
-    setTeams(prev => prev.map((team, tIndex) => 
+
+    setTeams(prev => prev.map((team, tIndex) =>
       tIndex === teamIndex ? { ...team, name: uppercaseName } : team
     ));
   };
@@ -123,7 +123,7 @@ const MatchSetupPage: React.FC = () => {
 
         // Ensure we have a valid user ID if not a guest
         const userId = isGuest ? null : currentUser?.uid;
-        
+
         if (!isGuest && !userId) {
           console.error('❌ No valid user ID found for non-guest user');
           throw new Error('Authentication required. Please sign in again.');
@@ -185,7 +185,7 @@ const MatchSetupPage: React.FC = () => {
             {/* Match Format */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-100">
               <h2 className="text-base font-bold text-gray-900 mb-3 text-center">Match Format</h2>
-              
+
               {/* Overs */}
               <div className="mb-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -224,7 +224,7 @@ const MatchSetupPage: React.FC = () => {
             {/* Special Rules */}
             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-xl border border-yellow-200">
               <h2 className="text-base font-bold text-gray-900 mb-3 text-center">⚡ Special Rules</h2>
-              
+
               {/* Batting Format */}
               <div className="mb-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -233,11 +233,10 @@ const MatchSetupPage: React.FC = () => {
                 <div className="space-y-2">
                   <button
                     onClick={() => setIsSingleSide(false)}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${
-                      !isSingleSide 
-                        ? 'border-cricket-blue bg-blue-50 text-cricket-blue' 
+                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${!isSingleSide
+                        ? 'border-cricket-blue bg-blue-50 text-cricket-blue'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="text-left">
@@ -249,14 +248,13 @@ const MatchSetupPage: React.FC = () => {
                       </div>
                     </div>
                   </button>
-                  
+
                   <button
                     onClick={() => setIsSingleSide(true)}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${
-                      isSingleSide 
-                        ? 'border-green-500 bg-green-50 text-green-700' 
+                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${isSingleSide
+                        ? 'border-green-500 bg-green-50 text-green-700'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="text-left">
@@ -280,11 +278,10 @@ const MatchSetupPage: React.FC = () => {
                   <button
                     onClick={() => (typeof playersPerTeam !== 'number' || playersPerTeam < 11) && setHasJoker(!hasJoker)}
                     disabled={typeof playersPerTeam === 'number' && playersPerTeam >= 11}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${
-                      hasJoker 
-                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700' 
+                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${hasJoker
+                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="text-left">
@@ -307,7 +304,7 @@ const MatchSetupPage: React.FC = () => {
                       Not available with 11+ players
                     </p>
                   )}
-                  
+
                   {hasJoker && (
                     <div className="mt-2 flex items-center space-x-2">
                       <input
@@ -427,14 +424,13 @@ const MatchSetupPage: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="p-4 pt-8">
                   <div className="grid gap-3">
                     {team.players.map((player, playerIndex) => (
                       <div key={player.id} className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                          teamIndex === 0 ? 'bg-cricket-blue' : 'bg-green-600'
-                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${teamIndex === 0 ? 'bg-cricket-blue' : 'bg-green-600'
+                          }`}>
                           {playerIndex + 1}
                         </div>
                         <input
@@ -462,7 +458,7 @@ const MatchSetupPage: React.FC = () => {
           >
             🏏 Start Match
           </button>
-          
+
           {!isTeamsValid() && (
             <p className="text-center text-sm text-gray-500 mt-2">
               Please fill all team names and player names

@@ -56,7 +56,7 @@ const ProfilePage: React.FC = () => {
             <div className="p-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">Account</h2>
             </div>
-            
+
             <div className="divide-y divide-gray-100">
               <button className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -85,7 +85,7 @@ const ProfilePage: React.FC = () => {
             <div className="p-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">Cricket Stats</h2>
             </div>
-            
+
             <div className="divide-y divide-gray-100">
               <button className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
@@ -114,7 +114,7 @@ const ProfilePage: React.FC = () => {
             <div className="p-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">Preferences</h2>
             </div>
-            
+
             <div className="divide-y divide-gray-100">
               <button className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
@@ -143,7 +143,7 @@ const ProfilePage: React.FC = () => {
             <div className="p-4 border-b border-gray-100">
               <h2 className="font-bold text-gray-900">Help & Support</h2>
             </div>
-            
+
             <div className="divide-y divide-gray-100">
               <button className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 bg-rose-100 rounded-xl flex items-center justify-center">
@@ -155,7 +155,7 @@ const ProfilePage: React.FC = () => {
                 </div>
               </button>
 
-              <button 
+              <button
                 onClick={handleLogout}
                 className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors text-red-600"
               >

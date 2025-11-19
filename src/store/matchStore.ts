@@ -7,7 +7,7 @@ interface MatchStore extends MatchState {
   firebaseDocId: string | null;
   matchCode: string | null;
   lastSaveTime: Date | null;
-  
+
   // Actions
   createMatch: (match: Omit<Match, 'id' | 'createdAt'>, userId?: string, isGuest?: boolean) => Promise<void>;
   loadMatch: (match: Match) => void;
@@ -49,7 +49,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
   createMatch: async (matchData, userId, isGuest = false) => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const match: Match = {
         ...matchData,
@@ -57,26 +57,26 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         createdAt: new Date(),
       };
 
-    // Create first innings
-    const firstInnings: Innings = {
-      number: 1,
-      battingTeamId: match.teams[0].id,
-      bowlingTeamId: match.teams[1].id,
-      overs: [],
-      totalRuns: 0,
-      totalWickets: 0,
-      totalBalls: 0,
-      currentBatsmanIds: match.isSingleSide 
-        ? match.teams[0].players[0].id
-        : [match.teams[0].players[0].id, match.teams[0].players[1].id],
-      isCompleted: false,
-    };
+      // Create first innings
+      const firstInnings: Innings = {
+        number: 1,
+        battingTeamId: match.teams[0].id,
+        bowlingTeamId: match.teams[1].id,
+        overs: [],
+        totalRuns: 0,
+        totalWickets: 0,
+        totalBalls: 0,
+        currentBatsmanIds: match.isSingleSide
+          ? match.teams[0].players[0].id
+          : [match.teams[0].players[0].id, match.teams[0].players[1].id],
+        isCompleted: false,
+      };
 
-    match.innings = [firstInnings];
+      match.innings = [firstInnings];
 
-    // Initialize current batsmen based on single-side or standard format
-    const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = match.isSingleSide
-      ? {
+      // Initialize current batsmen based on single-side or standard format
+      const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = match.isSingleSide
+        ? {
           playerId: match.teams[0].players[0].id,
           runs: 0,
           balls: 0,
@@ -85,7 +85,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           strikeRate: 0,
           isOut: false,
         }
-      : [
+        : [
           {
             playerId: match.teams[0].players[0].id,
             runs: 0,
@@ -106,51 +106,51 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           },
         ];
 
-    // Save to Firebase and get document ID
-    const { matchCode, docId } = await createMatchFirebase(match, userId, isGuest);
+      // Save to Firebase and get document ID
+      const { matchCode, docId } = await createMatchFirebase(match, userId, isGuest);
 
-    set({
-      match,
-      currentInnings: firstInnings,
-      currentBatsmen,
-      currentBowler: {
-        playerId: match.teams[1].players[0].id,
-        overs: 0,
-        balls: 0,
-        runs: 0,
-        wickets: 0,
-        economy: 0,
-        maidens: 0,
-      },
-      firebaseDocId: docId,
-      matchCode,
-      lastSaveTime: new Date(),
-      isLoading: false,
-      error: null,
-    });
-  } catch (error: any) {
-    console.error('Error creating match:', error);
-    set({
-      error: error.message || 'Failed to create match',
-      isLoading: false,
-    });
-    throw error;
-  }
+      set({
+        match,
+        currentInnings: firstInnings,
+        currentBatsmen,
+        currentBowler: {
+          playerId: match.teams[1].players[0].id,
+          overs: 0,
+          balls: 0,
+          runs: 0,
+          wickets: 0,
+          economy: 0,
+          maidens: 0,
+        },
+        firebaseDocId: docId,
+        matchCode,
+        lastSaveTime: new Date(),
+        isLoading: false,
+        error: null,
+      });
+    } catch (error: any) {
+      console.error('Error creating match:', error);
+      set({
+        error: error.message || 'Failed to create match',
+        isLoading: false,
+      });
+      throw error;
+    }
   },
 
   loadMatch: (match) => {
     // Load an existing match from Firebase (for recovery)
     const currentInnings = match.innings[match.currentInning - 1];
-    
+
     // Reconstruct current batsmen state
     let currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] | null = null;
-    
+
     if (currentInnings && !currentInnings.isCompleted) {
       if (match.isSingleSide) {
-        const batsmanId = typeof currentInnings.currentBatsmanIds === 'string' 
-          ? currentInnings.currentBatsmanIds 
+        const batsmanId = typeof currentInnings.currentBatsmanIds === 'string'
+          ? currentInnings.currentBatsmanIds
           : currentInnings.currentBatsmanIds[0];
-        
+
         currentBatsmen = {
           playerId: batsmanId,
           runs: 0, // Will be calculated from balls
@@ -161,10 +161,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           isOut: false,
         };
       } else {
-        const batsmanIds = Array.isArray(currentInnings.currentBatsmanIds) 
-          ? currentInnings.currentBatsmanIds 
+        const batsmanIds = Array.isArray(currentInnings.currentBatsmanIds)
+          ? currentInnings.currentBatsmanIds
           : [currentInnings.currentBatsmanIds];
-        
+
         currentBatsmen = [
           {
             playerId: batsmanIds[0],
@@ -186,7 +186,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           },
         ];
       }
-      
+
       // Recalculate batsman stats from all balls
       for (const over of currentInnings.overs) {
         for (const ball of over.balls) {
@@ -227,19 +227,75 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     // Find current over
     const currentOver = currentInnings?.overs.find(o => !o.completed) || null;
-    
-    // Find current bowler
+
+    // Find current bowler - CRITICAL FIX: Always set currentBowler, even when currentOver is null
     let currentBowler = null;
-    if (currentOver) {
-      currentBowler = {
-        playerId: currentOver.bowlerId,
-        overs: 0,
-        balls: 0,
-        runs: 0,
-        wickets: 0,
-        economy: 0,
-        maidens: 0,
-      };
+    if (currentInnings) {
+      const bowlingTeam = match.teams.find(t => t.id === currentInnings.bowlingTeamId);
+
+      if (currentOver) {
+        // Active over exists - use its bowler and calculate stats
+        const bowlerId = currentOver.bowlerId;
+        let balls = 0, runs = 0, wickets = 0, maidens = 0;
+
+        // Calculate bowler stats from all overs
+        currentInnings.overs.forEach(over => {
+          if (over.bowlerId === bowlerId) {
+            const ballsInOver = over.balls.filter(b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')).length;
+            balls += ballsInOver;
+            runs += over.runs;
+            wickets += over.wickets;
+            if (over.runs === 0 && ballsInOver === 6) maidens++;
+          }
+        });
+
+        currentBowler = {
+          playerId: bowlerId,
+          overs: Math.floor(balls / 6),
+          balls,
+          runs,
+          wickets,
+          economy: balls > 0 ? (runs / balls) * 6 : 0,
+          maidens,
+        };
+      } else if (currentInnings.overs.length > 0) {
+        // No active over but overs exist - use last over's bowler
+        const lastOver = currentInnings.overs[currentInnings.overs.length - 1];
+        const bowlerId = lastOver.bowlerId;
+        let balls = 0, runs = 0, wickets = 0, maidens = 0;
+
+        // Calculate bowler stats from all overs
+        currentInnings.overs.forEach(over => {
+          if (over.bowlerId === bowlerId) {
+            const ballsInOver = over.balls.filter(b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')).length;
+            balls += ballsInOver;
+            runs += over.runs;
+            wickets += over.wickets;
+            if (over.runs === 0 && ballsInOver === 6) maidens++;
+          }
+        });
+
+        currentBowler = {
+          playerId: bowlerId,
+          overs: Math.floor(balls / 6),
+          balls,
+          runs,
+          wickets,
+          economy: balls > 0 ? (runs / balls) * 6 : 0,
+          maidens,
+        };
+      } else if (bowlingTeam && bowlingTeam.players.length > 0) {
+        // No overs yet - use first bowler from bowling team
+        currentBowler = {
+          playerId: bowlingTeam.players[0].id,
+          overs: 0,
+          balls: 0,
+          runs: 0,
+          wickets: 0,
+          economy: 0,
+          maidens: 0,
+        };
+      }
     }
 
     set({
@@ -289,7 +345,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Update innings
     let updatedInnings: Innings = {
       ...state.currentInnings,
-      overs: state.currentInnings.overs.map(o => 
+      overs: state.currentInnings.overs.map(o =>
         o.number === updatedOver.number ? updatedOver : o
       ),
       totalRuns: state.currentInnings.totalRuns + ball.runs + (ball.extras?.runs || 0),
@@ -305,40 +361,40 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Update batsman stats
     let updatedBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
       ? (() => {
-                      const batsman = state.currentBatsmen as BatsmanStats;
-            if (batsman.playerId === ball.batsmanId) {
-              const newRuns = batsman.runs + ball.runs;
-              const newBalls = batsman.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
-              return {
-                ...batsman,
-                runs: newRuns,
-                balls: newBalls,
-                fours: batsman.fours + (ball.runs === 4 ? 1 : 0),
-                sixes: batsman.sixes + (ball.runs === 6 ? 1 : 0),
-                strikeRate: newBalls > 0 ? (newRuns / newBalls) * 100 : 0,
-                isOut: ball.wicket && ball.batsmanId === batsman.playerId,
-                dismissalType: ball.wicket && ball.batsmanId === batsman.playerId ? ball.wicketType : batsman.dismissalType,
-              };
-            }
-          return batsman;
-        })()
+        const batsman = state.currentBatsmen as BatsmanStats;
+        if (batsman.playerId === ball.batsmanId) {
+          const newRuns = batsman.runs + ball.runs;
+          const newBalls = batsman.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
+          return {
+            ...batsman,
+            runs: newRuns,
+            balls: newBalls,
+            fours: batsman.fours + (ball.runs === 4 ? 1 : 0),
+            sixes: batsman.sixes + (ball.runs === 6 ? 1 : 0),
+            strikeRate: newBalls > 0 ? (newRuns / newBalls) * 100 : 0,
+            isOut: ball.wicket && ball.batsmanId === batsman.playerId,
+            dismissalType: ball.wicket && ball.batsmanId === batsman.playerId ? ball.wicketType : batsman.dismissalType,
+          };
+        }
+        return batsman;
+      })()
       : (state.currentBatsmen as [BatsmanStats, BatsmanStats]).map(batsman => {
-          if (batsman.playerId === ball.batsmanId) {
-            const newRuns = batsman.runs + ball.runs;
-            const newBalls = batsman.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
-            return {
-              ...batsman,
-              runs: newRuns,
-              balls: newBalls,
-              fours: batsman.fours + (ball.runs === 4 ? 1 : 0),
-              sixes: batsman.sixes + (ball.runs === 6 ? 1 : 0),
-              strikeRate: newBalls > 0 ? (newRuns / newBalls) * 100 : 0,
-              isOut: ball.wicket && ball.batsmanId === batsman.playerId,
-              dismissalType: ball.wicket && ball.batsmanId === batsman.playerId ? ball.wicketType : batsman.dismissalType,
-            };
-          }
-          return batsman;
-        }) as [BatsmanStats, BatsmanStats];
+        if (batsman.playerId === ball.batsmanId) {
+          const newRuns = batsman.runs + ball.runs;
+          const newBalls = batsman.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1);
+          return {
+            ...batsman,
+            runs: newRuns,
+            balls: newBalls,
+            fours: batsman.fours + (ball.runs === 4 ? 1 : 0),
+            sixes: batsman.sixes + (ball.runs === 6 ? 1 : 0),
+            strikeRate: newBalls > 0 ? (newRuns / newBalls) * 100 : 0,
+            isOut: ball.wicket && ball.batsmanId === batsman.playerId,
+            dismissalType: ball.wicket && ball.batsmanId === batsman.playerId ? ball.wicketType : batsman.dismissalType,
+          };
+        }
+        return batsman;
+      }) as [BatsmanStats, BatsmanStats];
 
     // Automatic strike rotation after over completion (for standard batting only)
     if (!state.match.isSingleSide && updatedOver.completed) {
@@ -347,7 +403,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         (updatedBatsmen as [BatsmanStats, BatsmanStats])[1],
         (updatedBatsmen as [BatsmanStats, BatsmanStats])[0]
       ];
-      
+
       // Update innings currentBatsmanIds to reflect the new strike order
       updatedInnings = {
         ...updatedInnings,
@@ -365,19 +421,19 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       runs: state.currentBowler!.runs + ball.runs + (ball.extras?.runs || 0),
       wickets: state.currentBowler!.wickets + (ball.wicket ? 1 : 0),
       overs: Math.floor((state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1)) / 6),
-      economy: (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1)) > 0 
-        ? ((state.currentBowler!.runs + ball.runs + (ball.extras?.runs || 0)) / (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1))) * 6 
+      economy: (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1)) > 0
+        ? ((state.currentBowler!.runs + ball.runs + (ball.extras?.runs || 0)) / (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1))) * 6
         : 0,
     };
 
     // Check if innings should end
     // Calculate total wickets available based on players + joker
     const totalPlayersAvailable = state.match.playersPerTeam + (state.match.hasJoker ? 1 : 0);
-    const maxWickets = state.match.isSingleSide 
+    const maxWickets = state.match.isSingleSide
       ? totalPlayersAvailable  // Single-side: all players can bat
       : totalPlayersAvailable - 1; // Standard: need one batsman left (not out)
-    
-    const shouldEndInnings = 
+
+    const shouldEndInnings =
       updatedInnings.totalWickets >= maxWickets || // All out
       updatedInnings.totalBalls >= state.match.overs * 6 || // Overs completed
       (updatedInnings.target && updatedInnings.totalRuns >= updatedInnings.target); // Target achieved
@@ -393,7 +449,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       currentBowler: updatedBowler,
       match: {
         ...state.match,
-        innings: state.match.innings.map(i => 
+        innings: state.match.innings.map(i =>
           i.number === updatedInnings.number ? updatedInnings : i
         ),
         status: shouldEndInnings && state.match.currentInning === 2 ? 'completed' : state.match.status,
@@ -446,8 +502,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   completeInnings: () => {
     const state = get();
     if (!state.match || !state.currentInnings) return;
-    
-    console.log('completeInnings called:', { 
+
+    console.log('completeInnings called:', {
       inningsNumber: state.currentInnings.number,
       isCompleted: state.currentInnings.isCompleted,
       totalRuns: state.currentInnings.totalRuns,
@@ -469,7 +525,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         totalRuns: 0,
         totalWickets: 0,
         totalBalls: 0,
-        currentBatsmanIds: state.match.isSingleSide 
+        currentBatsmanIds: state.match.isSingleSide
           ? state.match.teams[1].players[0].id
           : [state.match.teams[1].players[0].id, state.match.teams[1].players[1].id],
         isCompleted: false,
@@ -484,6 +540,16 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
       const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
         ? {
+          playerId: state.match.teams[1].players[0].id,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        }
+        : [
+          {
             playerId: state.match.teams[1].players[0].id,
             runs: 0,
             balls: 0,
@@ -491,27 +557,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
             sixes: 0,
             strikeRate: 0,
             isOut: false,
-          }
-        : [
-            {
-              playerId: state.match.teams[1].players[0].id,
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-            {
-              playerId: state.match.teams[1].players[1].id,
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-          ];
+          },
+          {
+            playerId: state.match.teams[1].players[1].id,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          },
+        ];
 
       set({
         match: updatedMatch,
@@ -523,7 +579,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       // Match completed - Calculate winner and margin
       const firstInnings = state.match.innings[0];
       const secondInnings = updatedInnings;
-      
+
       console.log('🏆 Calculating match winner:', {
         firstInnings: {
           battingTeamId: firstInnings.battingTeamId,
@@ -535,21 +591,21 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         },
         teams: state.match.teams.map(t => ({ id: t.id, name: t.name }))
       });
-      
+
       let winner = '';
       let winMargin = '';
-      
+
       if (secondInnings.totalRuns > firstInnings.totalRuns) {
         // Second batting team won
         const winningTeam = state.match.teams.find(t => t.id === secondInnings.battingTeamId);
         const totalPlayersAvailable = state.match.playersPerTeam + (state.match.hasJoker ? 1 : 0);
-        const maxPossibleWickets = state.match.isSingleSide 
+        const maxPossibleWickets = state.match.isSingleSide
           ? totalPlayersAvailable  // Single-side: all players can bat
           : totalPlayersAvailable - 1; // Standard: need one batsman left
         const wicketsRemaining = maxPossibleWickets - secondInnings.totalWickets;
         winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${wicketsRemaining} wickets`;
-        
+
         console.log('🏆 Second batting team won:', {
           winningTeam: winningTeam?.name,
           winner,
@@ -561,7 +617,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         const runMargin = firstInnings.totalRuns - secondInnings.totalRuns;
         winner = winningTeam?.name || 'Unknown Team';
         winMargin = `${runMargin} runs`;
-        
+
         console.log('🏆 First batting team won:', {
           winningTeam: winningTeam?.name,
           winner,
@@ -571,7 +627,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         // Match tied
         winner = 'Match Tied';
         winMargin = '';
-        
+
         console.log('🏆 Match tied');
       }
 
@@ -583,7 +639,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           status: 'completed',
           winner,
           winMargin,
-          innings: state.match.innings.map(i => 
+          innings: state.match.innings.map(i =>
             i.number === updatedInnings.number ? updatedInnings : i
           ),
         },
@@ -611,17 +667,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       });
     } else {
       // For standard batting, replace the specific batsman in the pair
-      const updatedBatsmen = (state.currentBatsmen as [BatsmanStats, BatsmanStats]).map(batsman => 
-        batsman.playerId === outBatsmanId 
+      const updatedBatsmen = (state.currentBatsmen as [BatsmanStats, BatsmanStats]).map(batsman =>
+        batsman.playerId === outBatsmanId
           ? {
-              playerId: newBatsmanId,
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            }
+            playerId: newBatsmanId,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          }
           : batsman
       ) as [BatsmanStats, BatsmanStats];
 
@@ -651,7 +707,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Determine which team bats first based on toss result
     const tossWinnerTeam = state.match.teams.find(t => t.id === teamId);
     const otherTeam = state.match.teams.find(t => t.id !== teamId);
-    
+
     if (!tossWinnerTeam || !otherTeam) return;
 
     const battingTeamId = choice === 'bat' ? teamId : otherTeam.id;
@@ -669,12 +725,12 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       ...state.currentInnings!,
       battingTeamId,
       bowlingTeamId,
-      currentBatsmanIds: state.match.isSingleSide 
+      currentBatsmanIds: state.match.isSingleSide
         ? state.match.teams.find(t => t.id === battingTeamId)!.players[0].id
         : [
-            state.match.teams.find(t => t.id === battingTeamId)!.players[0].id,
-            state.match.teams.find(t => t.id === battingTeamId)!.players[1].id
-          ],
+          state.match.teams.find(t => t.id === battingTeamId)!.players[0].id,
+          state.match.teams.find(t => t.id === battingTeamId)!.players[1].id
+        ],
     };
 
     updatedMatch.innings = [updatedInnings];
@@ -682,9 +738,19 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Set up current batsmen for the batting team
     const battingTeam = state.match.teams.find(t => t.id === battingTeamId)!;
     const bowlingTeam = state.match.teams.find(t => t.id === bowlingTeamId)!;
-    
+
     const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
       ? {
+        playerId: battingTeam.players[0].id,
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        strikeRate: 0,
+        isOut: false,
+      }
+      : [
+        {
           playerId: battingTeam.players[0].id,
           runs: 0,
           balls: 0,
@@ -692,27 +758,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           sixes: 0,
           strikeRate: 0,
           isOut: false,
-        }
-      : [
-          {
-            playerId: battingTeam.players[0].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-          {
-            playerId: battingTeam.players[1].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-        ];
+        },
+        {
+          playerId: battingTeam.players[1].id,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        },
+      ];
 
     set({
       match: updatedMatch,
@@ -734,7 +790,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const state = get();
     if (!state.match || !state.currentInnings) return;
 
-    console.log('startMatchWithPlayers called:', { 
+    console.log('startMatchWithPlayers called:', {
       inningsNumber: state.currentInnings.number,
       currentIsCompleted: state.currentInnings.isCompleted,
       selectedBatsmen,
@@ -744,10 +800,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     // Check if we need to create the second innings
     const isStartingSecondInnings = state.currentInnings.isCompleted && state.currentInnings.number === 1;
-    
+
     if (isStartingSecondInnings) {
       console.log('Creating second innings...');
-      
+
       // Create the second innings
       const firstInnings = state.currentInnings;
       const secondInnings: Innings = {
@@ -758,7 +814,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         totalRuns: 0,
         totalWickets: 0,
         totalBalls: 0,
-        currentBatsmanIds: state.match.isSingleSide 
+        currentBatsmanIds: state.match.isSingleSide
           ? selectedBatsmen[0]
           : [selectedBatsmen[0], selectedBatsmen[1]] as [string, string],
         isCompleted: false,
@@ -773,6 +829,16 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
       const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
         ? {
+          playerId: selectedBatsmen[0],
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        }
+        : [
+          {
             playerId: selectedBatsmen[0],
             runs: 0,
             balls: 0,
@@ -780,27 +846,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
             sixes: 0,
             strikeRate: 0,
             isOut: false,
-          }
-        : [
-            {
-              playerId: selectedBatsmen[0],
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-            {
-              playerId: selectedBatsmen[1],
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-          ];
+          },
+          {
+            playerId: selectedBatsmen[1],
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          },
+        ];
 
       set({
         match: updatedMatch,
@@ -823,13 +879,23 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         target: secondInnings.target,
         battingTeamId: secondInnings.battingTeamId
       });
-      
+
       return;
     }
 
     // Handle first innings or existing second innings
     const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
       ? {
+        playerId: selectedBatsmen[0],
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        strikeRate: 0,
+        isOut: false,
+      }
+      : [
+        {
           playerId: selectedBatsmen[0],
           runs: 0,
           balls: 0,
@@ -837,32 +903,22 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           sixes: 0,
           strikeRate: 0,
           isOut: false,
-        }
-      : [
-          {
-            playerId: selectedBatsmen[0],
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-          {
-            playerId: selectedBatsmen[1],
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-        ];
+        },
+        {
+          playerId: selectedBatsmen[1],
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        },
+      ];
 
     // Update the innings with selected batsmen - ENSURE isCompleted is false
     const updatedInnings = {
       ...state.currentInnings,
-      currentBatsmanIds: state.match.isSingleSide 
+      currentBatsmanIds: state.match.isSingleSide
         ? selectedBatsmen[0]
         : [selectedBatsmen[0], selectedBatsmen[1]],
       isCompleted: false, // Explicitly set to false to ensure the innings is active
@@ -886,7 +942,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const updatedMatch = {
       ...state.match,
       status: 'active' as const,
-      innings: state.match.innings.map(i => 
+      innings: state.match.innings.map(i =>
         i.number === updatedInnings.number ? updatedInnings : i
       ),
     };
@@ -915,7 +971,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Find the remaining batsman's current stats
     const currentBatsmenArray = state.currentBatsmen as [BatsmanStats, BatsmanStats];
     const remainingBatsman = currentBatsmenArray.find(b => b.playerId === remainingBatsmanId && !b.isOut);
-    
+
     if (!remainingBatsman) return;
 
     // Convert to single batsman mode
@@ -927,7 +983,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     // Update the match to reflect single batting mode for this innings
     const updatedMatch = {
       ...state.match,
-      innings: state.match.innings.map(i => 
+      innings: state.match.innings.map(i =>
         i.number === updatedInnings.number ? updatedInnings : i
       ),
     };
@@ -958,7 +1014,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         totalRuns: 0,
         totalWickets: 0,
         totalBalls: 0,
-        currentBatsmanIds: state.match.isSingleSide 
+        currentBatsmanIds: state.match.isSingleSide
           ? state.match.teams[1].players[0].id
           : [state.match.teams[1].players[0].id, state.match.teams[1].players[1].id],
         isCompleted: false,
@@ -973,6 +1029,16 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
       const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
         ? {
+          playerId: state.match.teams[1].players[0].id,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          strikeRate: 0,
+          isOut: false,
+        }
+        : [
+          {
             playerId: state.match.teams[1].players[0].id,
             runs: 0,
             balls: 0,
@@ -980,27 +1046,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
             sixes: 0,
             strikeRate: 0,
             isOut: false,
-          }
-        : [
-            {
-              playerId: state.match.teams[1].players[0].id,
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-            {
-              playerId: state.match.teams[1].players[1].id,
-              runs: 0,
-              balls: 0,
-              fours: 0,
-              sixes: 0,
-              strikeRate: 0,
-              isOut: false,
-            },
-          ];
+          },
+          {
+            playerId: state.match.teams[1].players[1].id,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0,
+            isOut: false,
+          },
+        ];
 
       set({
         match: updatedMatch,
@@ -1012,10 +1068,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       // Match completed - Calculate winner and margin
       const firstInnings = state.match.innings[0];
       const secondInnings = updatedInnings;
-      
+
       let winner = '';
       let winMargin = '';
-      
+
       if (secondInnings.totalRuns > firstInnings.totalRuns) {
         // Second batting team won
         const winningTeam = state.match.teams.find(t => t.id === secondInnings.battingTeamId);
@@ -1042,7 +1098,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           status: 'completed',
           winner,
           winMargin,
-          innings: state.match.innings.map(i => 
+          innings: state.match.innings.map(i =>
             i.number === updatedInnings.number ? updatedInnings : i
           ),
         },
@@ -1060,7 +1116,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     const currentBatsmen = state.currentBatsmen as [BatsmanStats, BatsmanStats];
     const remainingBatsmen = currentBatsmen.filter(b => !b.isOut);
-    
+
     if (remainingBatsmen.length === 1) {
       return { isLastMan: true, remainingBatsmanId: remainingBatsmen[0].playerId };
     }
@@ -1099,7 +1155,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
       // Save the abandoned status to Firebase
       get().saveToFirebase();
-      
+
       return true; // Match was abandoned
     }
 

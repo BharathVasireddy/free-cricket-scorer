@@ -8,7 +8,7 @@ import { Home, PlusSquare, ClipboardList, LogOut, Zap, BarChart3, Settings, Trop
 
 const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isLoading, logout, isGuest } = useAuth();
+  const { currentUser, isLoading, logout } = useAuth();
   const [recentMatches, setRecentMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
 
@@ -24,7 +24,7 @@ const WelcomePage: React.FC = () => {
   }, [currentUser]);
 
   const loadRecentMatches = async () => {
-    if (!currentUser || isGuest) {
+    if (!currentUser) {
       setMatchesLoading(false);
       return;
     }
@@ -50,14 +50,14 @@ const WelcomePage: React.FC = () => {
 
   const formatMatchScore = (match: FirebaseMatch) => {
     if (!match.innings || match.innings.length === 0) return 'No score';
-    
+
     const firstInnings = match.innings[0];
     const secondInnings = match.innings[1];
-    
+
     if (!secondInnings) {
       return `${firstInnings.totalRuns}/${firstInnings.totalWickets}`;
     }
-    
+
     return `${firstInnings.totalRuns}/${firstInnings.totalWickets} vs ${secondInnings.totalRuns}/${secondInnings.totalWickets}`;
   };
 
@@ -76,7 +76,6 @@ const WelcomePage: React.FC = () => {
   };
 
   const getUserName = () => {
-    if (isGuest) return 'Guest';
     return currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Player';
   };
 
@@ -153,7 +152,7 @@ const WelcomePage: React.FC = () => {
                 <div className="text-[10px] text-green-100 mt-0.5">Start scoring</div>
               </div>
             </button>
-            
+
             <button
               onClick={() => navigate('/matches')}
               className="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all active:scale-95"
@@ -173,8 +172,8 @@ const WelcomePage: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">Recent Matches</h2>
-            {!isGuest && recentMatches.length > 0 && (
-              <button 
+            {recentMatches.length > 0 && (
+              <button
                 onClick={() => navigate('/matches')}
                 className="text-cricket-blue text-sm font-semibold"
               >
@@ -183,25 +182,7 @@ const WelcomePage: React.FC = () => {
             )}
           </div>
 
-          {isGuest ? (
-            <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-gray-900 mb-2">Guest Mode</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Your matches are public and not saved to your profile
-              </p>
-              <button
-                onClick={() => navigate('/auth')}
-                className="bg-gradient-to-r from-cricket-blue to-blue-600 text-white px-6 py-3 rounded-xl text-sm font-semibold shadow-lg"
-              >
-                Create Account
-              </button>
-            </div>
-          ) : matchesLoading ? (
+          {matchesLoading ? (
             <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-100">
               <div className="w-8 h-8 border-3 border-cricket-blue border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
               <p className="text-gray-600 text-sm">Loading matches...</p>
@@ -227,7 +208,7 @@ const WelcomePage: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {recentMatches.map((match) => (
-                <div 
+                <div
                   key={match.id}
                   className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                 >
@@ -237,11 +218,10 @@ const WelcomePage: React.FC = () => {
                         <span className="text-sm font-bold text-gray-900">
                           {match.teams[0]?.name} vs {match.teams[1]?.name}
                         </span>
-                        <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
-                          match.status === 'completed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-orange-100 text-orange-700'
-                        }`}>
+                        <span className={`text-xs px-2 py-1 rounded-lg font-medium ${match.status === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
+                          }`}>
                           {match.status === 'completed' ? 'Completed' : 'Live'}
                         </span>
                       </div>
@@ -281,7 +261,7 @@ const WelcomePage: React.FC = () => {
                 <div className="text-sm text-gray-600">Live ball-by-ball updates</div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center">
                 <BarChart3 size={18} className="text-white" />
@@ -302,24 +282,24 @@ const WelcomePage: React.FC = () => {
             <Home size={18} className="text-cricket-blue" />
             <span className="text-xs font-medium">Home</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/setup')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-green-500 transition-colors"
           >
             <PlusSquare size={18} className="text-gray-400" />
             <span className="text-xs font-medium">New</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/matches')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-purple-500 transition-colors"
           >
             <ClipboardList size={18} className="text-gray-400" />
             <span className="text-xs font-medium">Matches</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/profile')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-indigo-500 transition-colors"
           >

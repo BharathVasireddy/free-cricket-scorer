@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  signInAnonymously, 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -11,9 +10,7 @@ import { auth } from '../lib/firebase';
 
 interface AuthContextType {
   currentUser: any | null;
-  isGuest: boolean;
   isLoading: boolean;
-  signInAsGuest: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -32,37 +29,22 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: any) => {
       console.log('🔐 Auth state changed:', {
         hasUser: !!user,
         uid: user?.uid,
-        isAnonymous: user?.isAnonymous,
         email: user?.email,
         displayName: user?.displayName
       });
-      
+
       setCurrentUser(user);
-      setIsGuest(user ? user.isAnonymous : false);
       setIsLoading(false);
     });
 
     return unsubscribe;
   }, []);
-
-  const signInAsGuest = async () => {
-    setIsLoading(true);
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error('Error signing in as guest:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const signInWithEmail = async (email: string, password: string) => {
     setIsLoading(true);
@@ -103,9 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     currentUser,
-    isGuest,
     isLoading,
-    signInAsGuest,
     signInWithEmail,
     signUpWithEmail,
     logout

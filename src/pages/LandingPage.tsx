@@ -1,20 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { Helmet } from 'react-helmet';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signInAsGuest, isLoading } = useAuth();
-
-  const handleGuestStart = async () => {
-    try {
-      await signInAsGuest();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Failed to start as guest:', error);
-    }
-  };
 
   const handleCreateAccount = () => {
     navigate('/auth?mode=signup');
@@ -60,8 +49,7 @@ const LandingPage: React.FC = () => {
               "Real-time scoring",
               "Custom match rules",
               "Mobile-friendly interface",
-              "Detailed statistics",
-              "No registration required"
+              "Detailed statistics"
             ]
           })
         }}
@@ -97,42 +85,39 @@ const LandingPage: React.FC = () => {
               <span className="block text-yellow-300">Without Complications</span>
             </h1>
             <p className="text-lg md:text-xl text-green-100 mb-8 max-w-3xl mx-auto leading-relaxed">
-              The simplest way to score street cricket, backyard games, and local tournaments. 
+              The simplest way to score street cricket, backyard games, and local tournaments.
               No complex setups, just start scoring in seconds.
             </p>
-            
+
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
               <button
-                onClick={handleGuestStart}
-                disabled={isLoading}
-                className="bg-yellow-500 text-yellow-900 px-6 lg:px-8 py-3 lg:py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 transition-all transform hover:scale-105 shadow-lg disabled:opacity-50 w-full sm:w-auto"
+                onClick={handleCreateAccount}
+                className="bg-yellow-500 text-yellow-900 px-6 lg:px-8 py-3 lg:py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 transition-all transform hover:scale-105 shadow-lg w-full sm:w-auto"
               >
-                {isLoading ? 'Starting...' : '🚀 Start Scoring Now'}
+                🚀 Create Free Account
               </button>
               <button
-                onClick={handleCreateAccount}
+                onClick={handleSignIn}
                 className="bg-white/10 text-white px-6 lg:px-8 py-3 lg:py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all backdrop-blur border border-white/20 w-full sm:w-auto"
               >
-                Create Free Account
+                Sign In
               </button>
             </div>
-            
+
             <p className="text-green-200 text-sm">
-              No registration required • Free forever • No ads
+              Free forever • No ads • Professional scoring tools
             </p>
           </div>
 
           {/* Key Features */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-12">
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
-              <div className="text-4xl mb-4">⚡</div>
-              <h2 className="text-xl font-bold text-white mb-3">Quick Start</h2>
-              <p className="text-green-100">
-                Start scoring in seconds. No registration needed. Perfect for impromptu matches.
-              </p>
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-left">
+              <div className="text-3xl mb-3">🚀</div>
+              <h4 className="text-lg font-bold text-white mb-2">Quick Setup</h4>
+              <p className="text-green-100 text-sm lg:text-base">Create your free account and start scoring immediately. Simple and fast.</p>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
               <div className="text-4xl mb-4">🎯</div>
               <h2 className="text-xl font-bold text-white mb-3">Your Rules</h2>
@@ -140,7 +125,7 @@ const LandingPage: React.FC = () => {
                 5 overs or 50 overs, 3 players or 11 - you decide! Supports any format.
               </p>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
               <div className="text-4xl mb-4">📱</div>
               <h2 className="text-xl font-bold text-white mb-3">Works Everywhere</h2>
@@ -155,7 +140,7 @@ const LandingPage: React.FC = () => {
             <h2 className="text-2xl lg:text-3xl font-bold text-white text-center mb-8">
               Start Scoring in 3 Steps
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
               <div>
                 <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
@@ -164,7 +149,7 @@ const LandingPage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-white mb-2">Set Up Match</h3>
                 <p className="text-green-100 text-sm">Choose overs, players, and format</p>
               </div>
-              
+
               <div>
                 <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                   2
@@ -172,7 +157,7 @@ const LandingPage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-white mb-2">Add Teams</h3>
                 <p className="text-green-100 text-sm">Enter team names and players</p>
               </div>
-              
+
               <div>
                 <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                   3

@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signInAsGuest, signInWithEmail, signUpWithEmail, isLoading } = useAuth();
-  
+  const { signInWithEmail, signUpWithEmail, isLoading } = useAuth();
+
   // Check URL parameter to determine initial mode
   const urlMode = searchParams.get('mode');
   const [isLogin, setIsLogin] = useState(urlMode !== 'signup');
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Update mode based on URL parameter changes
   useEffect(() => {
@@ -42,14 +43,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const handleGuestAccess = async () => {
-    try {
-      await signInAsGuest();
-      navigate('/dashboard');
-    } catch (error: any) {
-      setError(error.message || 'Failed to continue as guest');
-    }
-  };
+
 
   const handleBack = () => {
     // Check if there's a previous page in history, otherwise go to landing
@@ -82,7 +76,7 @@ const AuthPage: React.FC = () => {
             <ArrowLeft size={16} className="mr-1" />
             Back
           </button>
-          
+
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">🏏</div>
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -139,16 +133,26 @@ const AuthPage: React.FC = () => {
               <label htmlFor="password" className="form-label">
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field w-full"
-                placeholder="Enter your password"
-                required
-                minLength={6}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field w-full pr-10"
+                  placeholder="Enter your password"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -169,33 +173,16 @@ const AuthPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or</span>
-              </div>
-            </div>
 
-            <button
-              onClick={handleGuestAccess}
-              disabled={isLoading}
-              className="w-full mt-4 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-target"
-            >
-              {isLoading ? 'Please wait...' : 'Continue as Guest'}
-            </button>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              By signing up, you agree to our terms and privacy policy. 
+              By signing up, you agree to our terms and privacy policy.
               <br />
               Developed by{' '}
-              <a 
-                href="https://cloud9digital.in" 
-                target="_blank" 
+              <a
+                href="https://cloud9digital.in"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-cricket-blue hover:text-blue-700 touch-target"
               >

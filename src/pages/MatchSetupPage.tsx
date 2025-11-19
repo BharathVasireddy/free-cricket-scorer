@@ -7,7 +7,7 @@ import type { Team, Player } from '../types';
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();
   const { createMatch } = useMatchStore();
-  const { currentUser, isGuest } = useAuth();
+  const { currentUser } = useAuth();
 
   // Form state
   const [teams, setTeams] = useState<Team[]>([
@@ -113,20 +113,12 @@ const MatchSetupPage: React.FC = () => {
   const handleStartMatch = async () => {
     if (isTeamsValid() && typeof overs === 'number' && typeof playersPerTeam === 'number') {
       try {
-        // Debug logging
-        console.log('🔍 Debug: Creating match with user info:', {
-          currentUser: currentUser,
-          userId: currentUser?.uid,
-          isGuest: isGuest,
-          hasCurrentUser: !!currentUser
-        });
+        // Ensure we have a valid user ID
+        const userId = currentUser?.uid;
 
-        // Ensure we have a valid user ID if not a guest
-        const userId = isGuest ? null : currentUser?.uid;
-
-        if (!isGuest && !userId) {
-          console.error('❌ No valid user ID found for non-guest user');
-          throw new Error('Authentication required. Please sign in again.');
+        if (!userId) {
+          console.error('❌ No valid user ID found - authentication required');
+          throw new Error('Authentication required. Please sign in to create a match.');
         }
 
         await createMatch({
@@ -139,7 +131,7 @@ const MatchSetupPage: React.FC = () => {
           currentInning: 1,
           innings: [],
           status: 'active',
-        }, userId, isGuest);
+        }, userId);
         navigate('/toss');
       } catch (error) {
         console.error('Failed to create match:', error);
@@ -234,8 +226,8 @@ const MatchSetupPage: React.FC = () => {
                   <button
                     onClick={() => setIsSingleSide(false)}
                     className={`w-full p-2.5 rounded-lg border-2 transition-all ${!isSingleSide
-                        ? 'border-cricket-blue bg-blue-50 text-cricket-blue'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'border-cricket-blue bg-blue-50 text-cricket-blue'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <div className="flex items-center justify-between">
@@ -252,8 +244,8 @@ const MatchSetupPage: React.FC = () => {
                   <button
                     onClick={() => setIsSingleSide(true)}
                     className={`w-full p-2.5 rounded-lg border-2 transition-all ${isSingleSide
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <div className="flex items-center justify-between">
@@ -279,8 +271,8 @@ const MatchSetupPage: React.FC = () => {
                     onClick={() => (typeof playersPerTeam !== 'number' || playersPerTeam < 11) && setHasJoker(!hasJoker)}
                     disabled={typeof playersPerTeam === 'number' && playersPerTeam >= 11}
                     className={`w-full p-2.5 rounded-lg border-2 transition-all ${hasJoker
-                        ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <div className="flex items-center justify-between">

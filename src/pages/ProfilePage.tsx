@@ -5,7 +5,7 @@ import { Settings, LogOut, User, Mail, Trophy, History, Bell, HelpCircle } from 
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isGuest, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -17,13 +17,11 @@ const ProfilePage: React.FC = () => {
   };
 
   const getUserName = () => {
-    if (isGuest) return 'Guest User';
-    return currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Cricket Player';
+    return currentUser?.displayName || 'User';
   };
 
   const getUserEmail = () => {
-    if (isGuest) return 'guest@cricketscorer.app';
-    return currentUser?.email || 'No email provided';
+    return currentUser?.email || 'No email';
   };
 
   const getInitials = () => {

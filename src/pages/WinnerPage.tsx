@@ -21,7 +21,12 @@ const WinnerPage: React.FC = () => {
       if (match && !matchCode && !isSaving) {
         setIsSaving(true);
         try {
-          const code = await saveMatch(match);
+          // Get userId from match data - it should be set when match was created
+          const userId = (match as any).userId;
+          if (!userId) {
+            throw new Error('No user ID found - match cannot be saved');
+          }
+          const code = await saveMatch(match, userId);
           setMatchCode(code);
           console.log('Match saved successfully with code:', code);
         } catch (error) {
@@ -38,9 +43,9 @@ const WinnerPage: React.FC = () => {
 
   const firstInnings = match.innings[0];
   const secondInnings = match.innings[1];
-  
+
   const isMatchTied = match.winner === 'Match Tied';
-  
+
   const handleShareScorecard = async () => {
     const matchSummary = `🏏 ${match.teams[0].name} vs ${match.teams[1].name}
 ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInnings.totalBalls / 6)}.${firstInnings.totalBalls % 6}) vs ${secondInnings.totalRuns}/${secondInnings.totalWickets} (${Math.floor(secondInnings.totalBalls / 6)}.${secondInnings.totalBalls % 6})
@@ -105,7 +110,7 @@ ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInning
       <div className="p-4 space-y-4">
         <div className="bg-white rounded-lg p-4">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Match Summary</h2>
-          
+
           {/* First Innings */}
           <div className="mb-4 pb-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
@@ -263,7 +268,7 @@ ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInning
             <div>
               <span className="text-gray-600">Run rate:</span>
               <span className="font-medium ml-2">
-                {((firstInnings.totalRuns + secondInnings.totalRuns) / 
+                {((firstInnings.totalRuns + secondInnings.totalRuns) /
                   ((firstInnings.totalBalls + secondInnings.totalBalls) / 6)).toFixed(2)} per over
               </span>
             </div>

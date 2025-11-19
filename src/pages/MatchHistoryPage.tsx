@@ -8,7 +8,7 @@ import { Trophy, Search } from 'lucide-react';
 
 const MatchHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isGuest } = useAuth();
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'private' | 'community'>('private');
   const [privateMatches, setPrivateMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [communityMatches, setCommunityMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
@@ -21,59 +21,53 @@ const MatchHistoryPage: React.FC = () => {
     loadMatches();
   }, [currentUser]);
 
-  useEffect(() => {
-    // For guest users, default to community tab
-    if (isGuest) {
-      setActiveTab('community');
-    }
-  }, [isGuest]);
 
   const loadMatches = async (showLoader = true) => {
     if (showLoader) {
       setIsLoading(true);
     }
     setError(null);
-    
+
     try {
       console.log('⚡ Loading matches with optimized service...');
-      
+
       // Use Promise.allSettled to handle partial failures gracefully
       const [privateResult, communityResult] = await Promise.allSettled([
-        currentUser && !isGuest ? getUserMatches(currentUser.uid) : Promise.resolve([]),
+        currentUser ? getUserMatches(currentUser.uid) : Promise.resolve([]),
         getCommunityMatches()
       ]);
-      
+
       // Handle private matches result
       const privateData = privateResult.status === 'fulfilled' ? privateResult.value : [];
       if (privateResult.status === 'rejected') {
         console.warn('Failed to load private matches:', privateResult.reason);
       }
-      
+
       // Handle community matches result
       const communityData = communityResult.status === 'fulfilled' ? communityResult.value : [];
       if (communityResult.status === 'rejected') {
         console.warn('Failed to load community matches:', communityResult.reason);
       }
-      
+
       setPrivateMatches(privateData);
       setCommunityMatches(communityData);
-      
+
       console.log('📊 Loaded:', privateData.length, 'private matches,', communityData.length, 'community matches');
-      
+
       // Only show error if both failed
       if (privateResult.status === 'rejected' && communityResult.status === 'rejected') {
         setError('Unable to load matches. Please check your connection and try again.');
       }
-      
+
     } catch (err: any) {
       console.error('❌ Failed to load matches:', err);
-      
-      const errorMessage = err.code === 'permission-denied' 
+
+      const errorMessage = err.code === 'permission-denied'
         ? 'Access denied. Please check your permissions.'
         : err.code === 'unavailable'
-        ? 'Service temporarily unavailable. Please try again.'
-        : err.message || 'Failed to load matches. Please try again.';
-        
+          ? 'Service temporarily unavailable. Please try again.'
+          : err.message || 'Failed to load matches. Please try again.';
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -87,7 +81,7 @@ const MatchHistoryPage: React.FC = () => {
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'Unknown date';
-    
+
     let date;
     if (timestamp.seconds) {
       // Firestore Timestamp
@@ -97,7 +91,7 @@ const MatchHistoryPage: React.FC = () => {
     } else {
       date = new Date(timestamp);
     }
-    
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -114,14 +108,14 @@ const MatchHistoryPage: React.FC = () => {
 
   const getMatchScore = (match: FirebaseMatch) => {
     if (!match.innings || match.innings.length === 0) return 'No score';
-    
+
     const firstInnings = match.innings[0];
     const secondInnings = match.innings[1];
-    
+
     if (!secondInnings) {
       return `${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInnings.totalBalls / 6)}.${firstInnings.totalBalls % 6})`;
     }
-    
+
     return `${firstInnings.totalRuns}/${firstInnings.totalWickets} vs ${secondInnings.totalRuns}/${secondInnings.totalWickets}`;
   };
 
@@ -139,11 +133,10 @@ const MatchHistoryPage: React.FC = () => {
           </div>
           <p className="text-xs text-gray-500 mb-1">{formatDate(match.createdAt)}</p>
           <div className="flex items-center space-x-2">
-            <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-              match.status === 'completed' 
-                ? 'bg-green-100 text-green-700' 
+            <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${match.status === 'completed'
+                ? 'bg-green-100 text-green-700'
                 : 'bg-orange-100 text-orange-700'
-            }`}>
+              }`}>
               {match.status === 'completed' ? 'Completed' : 'Live'}
             </span>
             {match.matchCode && (
@@ -163,16 +156,15 @@ const MatchHistoryPage: React.FC = () => {
           View
         </button>
       </div>
-      
+
       <div className="bg-gray-50 rounded-xl p-3 mb-3">
         <div className="font-semibold text-gray-900 mb-1">{getMatchScore(match)}</div>
-        <div className={`text-xs font-medium ${
-          match.status === 'completed' ? 'text-green-600' : 'text-orange-600'
-        }`}>
+        <div className={`text-xs font-medium ${match.status === 'completed' ? 'text-green-600' : 'text-orange-600'
+          }`}>
           {getMatchResult(match)}
         </div>
       </div>
-      
+
       <div className="flex items-center text-xs text-gray-500 space-x-4">
         <div className="flex items-center space-x-1">
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +202,7 @@ const MatchHistoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center min-h-64 space-y-4 p-6">
           <div className="w-12 h-12 border-4 border-cricket-blue border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600 font-medium">Loading matches...</p>
@@ -242,7 +234,7 @@ const MatchHistoryPage: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center min-h-64 space-y-4 p-6">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center">
             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,16 +292,15 @@ const MatchHistoryPage: React.FC = () => {
 
       <div className="px-4 py-6 pb-24">
         {/* Tab Selector */}
-        {!isGuest && (
+        {(
           <div className="bg-white rounded-2xl p-2 mb-6 shadow-sm border border-gray-100">
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setActiveTab('private')}
-                className={`py-3 px-4 rounded-xl font-semibold transition-all ${
-                  activeTab === 'private'
+                className={`py-3 px-4 rounded-xl font-semibold transition-all ${activeTab === 'private'
                     ? 'bg-gradient-to-r from-cricket-blue to-blue-600 text-white shadow-md'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-center space-x-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,11 +311,10 @@ const MatchHistoryPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('community')}
-                className={`py-3 px-4 rounded-xl font-semibold transition-all ${
-                  activeTab === 'community'
+                className={`py-3 px-4 rounded-xl font-semibold transition-all ${activeTab === 'community'
                     ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-md'
                     : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-center space-x-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -354,7 +344,7 @@ const MatchHistoryPage: React.FC = () => {
         </div>
 
         {/* Content */}
-        {activeTab === 'private' && !isGuest ? (
+        {activeTab === 'private' ? (
           <div>
             {privateMatches.length === 0 ? (
               <div className="bg-white rounded-3xl p-8 text-center shadow-sm border border-gray-100">
@@ -412,7 +402,7 @@ const MatchHistoryPage: React.FC = () => {
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 bottom-nav">
         <div className="flex items-center justify-around">
-          <button 
+          <button
             onClick={() => navigate('/dashboard')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-cricket-blue transition-colors"
           >
@@ -421,8 +411,8 @@ const MatchHistoryPage: React.FC = () => {
             </svg>
             <span className="text-xs font-medium">Home</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/setup')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-green-500 transition-colors"
           >
@@ -431,7 +421,7 @@ const MatchHistoryPage: React.FC = () => {
             </svg>
             <span className="text-xs font-medium">New</span>
           </button>
-          
+
           <button className="flex flex-col items-center space-y-1 text-purple-500">
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
@@ -439,8 +429,8 @@ const MatchHistoryPage: React.FC = () => {
             </svg>
             <span className="text-xs font-medium">Matches</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/profile')}
             className="flex flex-col items-center space-y-1 text-gray-400 hover:text-indigo-500 transition-colors"
           >

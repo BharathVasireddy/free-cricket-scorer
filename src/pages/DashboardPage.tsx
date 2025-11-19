@@ -6,7 +6,7 @@ import type { FirebaseMatch } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isGuest } = useAuth();
+  const { currentUser } = useAuth();
   const [privateMatches, setPrivateMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [communityMatches, setCommunityMatches] = useState<(FirebaseMatch & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,25 +23,25 @@ const DashboardPage: React.FC = () => {
   const loadMatches = async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       console.log('⚡ Loading matches with optimized service...');
-      
+
       // Use Promise.allSettled to handle partial failures gracefully
       const [privateResult] = await Promise.allSettled([
-        currentUser && !isGuest ? getUserMatches(currentUser.uid) : Promise.resolve([])
+        currentUser ? getUserMatches(currentUser.uid) : Promise.resolve([])
       ]);
-      
+
       // Handle private matches result
       const privateData = privateResult.status === 'fulfilled' ? privateResult.value : [];
       if (privateResult.status === 'rejected') {
         console.warn('Failed to load private matches:', privateResult.reason);
         setError(`Failed to load matches: ${privateResult.reason.message || 'Unknown error'}`);
       }
-      
+
       setPrivateMatches(privateData);
       console.log('📊 Loaded:', privateData.length, 'private matches');
-      
+
     } catch (error: any) {
       console.error('❌ Error loading matches:', error);
       setError(`Failed to load matches: ${error.message || 'Unknown error'}`);
@@ -55,10 +55,10 @@ const DashboardPage: React.FC = () => {
       setIsLoadingCommunity(true);
     }
     setCommunityError(null);
-    
+
     try {
       console.log('🌍 Loading community matches...');
-      
+
       // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         if (isLoadingCommunity) {
@@ -68,19 +68,19 @@ const DashboardPage: React.FC = () => {
 
       const matches = await getCommunityMatches();
       clearTimeout(timeout);
-      
+
       setCommunityMatches(matches);
       setRetryCount(0); // Reset on success
       console.log('✅ Loaded', matches.length, 'community matches');
     } catch (error: any) {
       console.error('❌ Failed to load community matches:', error);
-      
-      const errorMessage = error.code === 'permission-denied' 
+
+      const errorMessage = error.code === 'permission-denied'
         ? 'Access denied to community matches.'
         : error.code === 'unavailable'
-        ? 'Community matches temporarily unavailable.'
-        : error.message || 'Failed to load community matches.';
-        
+          ? 'Community matches temporarily unavailable.'
+          : error.message || 'Failed to load community matches.';
+
       setCommunityError(errorMessage);
     } finally {
       setIsLoadingCommunity(false);
@@ -94,7 +94,7 @@ const DashboardPage: React.FC = () => {
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'Unknown date';
-    
+
     let date;
     if (timestamp.seconds) {
       date = new Date(timestamp.seconds * 1000);
@@ -103,7 +103,7 @@ const DashboardPage: React.FC = () => {
     } else {
       date = new Date(timestamp);
     }
-    
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -120,14 +120,14 @@ const DashboardPage: React.FC = () => {
 
   const getMatchScore = (match: FirebaseMatch) => {
     if (!match.innings || match.innings.length === 0) return 'No score';
-    
+
     const firstInnings = match.innings[0];
     const secondInnings = match.innings[1];
-    
+
     if (!secondInnings) {
       return `${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInnings.totalBalls / 6)}.${firstInnings.totalBalls % 6})`;
     }
-    
+
     return `${firstInnings.totalRuns}/${firstInnings.totalWickets} vs ${secondInnings.totalRuns}/${secondInnings.totalWickets}`;
   };
 
@@ -138,7 +138,7 @@ const DashboardPage: React.FC = () => {
       // Simple win detection - this could be enhanced
       return m.winner && m.winner !== 'Match Tied';
     }).length;
-    
+
     return { totalMatches, completedMatches: completedMatches.length, wins };
   };
 
@@ -161,14 +161,13 @@ const DashboardPage: React.FC = () => {
           )}
         </div>
       </div>
-      
+
       <div className={compact ? 'mb-2' : 'mb-3'}>
         <div className={`font-semibold text-gray-900 ${compact ? 'text-sm' : 'text-lg'}`}>
           {getMatchScore(match)}
         </div>
-        <div className={`text-xs font-medium ${
-          match.status === 'completed' ? 'text-green-600' : 'text-orange-600'
-        }`}>
+        <div className={`text-xs font-medium ${match.status === 'completed' ? 'text-green-600' : 'text-orange-600'
+          }`}>
           {getMatchResult(match)}
         </div>
       </div>
@@ -378,19 +377,19 @@ const DashboardPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total Matches</span>
                   <span className="font-bold text-2xl text-blue-600">
-                    {isGuest ? '---' : getPlayerStats().totalMatches}
+                    {getPlayerStats().totalMatches}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Completed</span>
                   <span className="font-bold text-2xl text-green-600">
-                    {isGuest ? '---' : getPlayerStats().completedMatches}
+                    {getPlayerStats().completedMatches}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Wins</span>
                   <span className="font-bold text-2xl text-yellow-600">
-                    {isGuest ? '---' : getPlayerStats().wins}
+                    {getPlayerStats().wins}
                   </span>
                 </div>
               </div>

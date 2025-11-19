@@ -9,7 +9,7 @@ interface MatchStore extends MatchState {
   lastSaveTime: Date | null;
 
   // Actions
-  createMatch: (match: Omit<Match, 'id' | 'createdAt'>, userId?: string, isGuest?: boolean) => Promise<void>;
+  createMatch: (match: Omit<Match, 'id' | 'createdAt'>, userId: string) => Promise<void>;
   loadMatch: (match: Match) => void;
   addBall: (ball: Omit<Ball, 'overNumber' | 'ballNumber'>) => void;
   startNewOver: (bowlerId: string) => void;
@@ -47,7 +47,7 @@ const initialState: MatchState & {
 export const useMatchStore = create<MatchStore>((set, get) => ({
   ...initialState,
 
-  createMatch: async (matchData, userId, isGuest = false) => {
+  createMatch: async (matchData, userId) => {
     set({ isLoading: true, error: null });
 
     try {
@@ -107,7 +107,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         ];
 
       // Save to Firebase and get document ID
-      const { matchCode, docId } = await createMatchFirebase(match, userId, isGuest);
+      const { matchCode, docId } = await createMatchFirebase(match, userId);
 
       set({
         match,

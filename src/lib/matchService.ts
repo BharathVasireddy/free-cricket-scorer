@@ -28,7 +28,7 @@ const withRetry = async <T>(operation: () => Promise<T>, retries = MAX_RETRIES):
 // Data sanitization function to remove undefined values (Firestore doesn't accept undefined)
 const sanitizeMatchData = (data: any): any => {
   const sanitized = { ...data };
-  
+
   // Remove undefined values recursively
   Object.keys(sanitized).forEach(key => {
     if (sanitized[key] === undefined) {
@@ -38,12 +38,12 @@ const sanitizeMatchData = (data: any): any => {
       sanitized[key] = sanitizeMatchData(sanitized[key]);
     } else if (Array.isArray(sanitized[key])) {
       // Sanitize arrays
-      sanitized[key] = sanitized[key].map((item: any) => 
+      sanitized[key] = sanitized[key].map((item: any) =>
         item !== null && typeof item === 'object' ? sanitizeMatchData(item) : item
       ).filter((item: any) => item !== undefined);
     }
   });
-  
+
   return sanitized;
 };
 
@@ -63,35 +63,35 @@ export const testFirestoreConnection = async (): Promise<boolean> => {
   if (connectionStatus === 'connected') {
     return true;
   }
-  
+
   // Return ongoing test if already in progress
   if (connectionTestPromise) {
     return connectionTestPromise;
   }
-  
+
   connectionTestPromise = (async () => {
     try {
       console.log('🔍 Testing Firestore connection...');
-      
+
       // Use a very lightweight operation with timeout
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Connection timeout')), 5000);
       });
-      
+
       const testPromise = getDocs(query(collection(db, 'matches'), limit(1)));
-      
+
       await Promise.race([testPromise, timeoutPromise]);
-      
+
       connectionStatus = 'connected';
       console.log('✅ Firestore connection successful');
       return true;
     } catch (error: any) {
       connectionStatus = 'failed';
       console.error('❌ Firestore connection failed:', error.code || error.message);
-      
+
       // Don't spam console with full error details
       if (error.code !== 'permission-denied' && error.code !== 'not-found') {
-        console.error('Connection error details:', error.code, error.message);  
+        console.error('Connection error details:', error.code, error.message);
       }
       return false;
     } finally {
@@ -104,7 +104,7 @@ export const testFirestoreConnection = async (): Promise<boolean> => {
       }, 5000);
     }
   })();
-  
+
   return connectionTestPromise;
 };
 
@@ -126,27 +126,27 @@ const setCachedData = (cacheKey: string, data: any[]): void => {
 };
 
 // Optimized save function - remove redundant connection test
-export const saveMatch = async (matchData: Match, userId?: string, isGuest: boolean = false): Promise<string> => {
+export const saveMatch = async (matchData: Match, userId: string): Promise<string> => {
   return withRetry(async () => {
-    console.log('💾 Saving match...', { userId, isGuest });
+    console.log('💾 Saving match...', { userId });
 
     const matchCode = generateMatchCode();
     const matchToSave = sanitizeMatchData({
       ...matchData,
       matchCode,
-      userId: userId || null,
-      isGuest,
-      isPublic: isGuest,
+      userId,
+      isGuest: false,
+      isPublic: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
 
     const docRef = await addDoc(collection(db, 'matches'), matchToSave);
     console.log('✅ Match saved with ID: ', docRef.id, 'Code:', matchCode);
-    
+
     // Clear relevant cache
     matchesCache.clear();
-    
+
     return matchCode;
   });
 };
@@ -165,28 +165,22 @@ export const updateMatchRealtime = async (matchId: string, matchData: Match): Pr
 };
 
 // Optimized create match function
-export const createMatch = async (matchData: Match, userId?: string, isGuest: boolean = false): Promise<{ matchCode: string; docId: string }> => {
+export const createMatch = async (matchData: Match, userId: string): Promise<{ matchCode: string; docId: string }> => {
   return withRetry(async () => {
-    console.log('🆕 Creating new match...', { 
-      userId, 
-      isGuest,
+    console.log('🆕 Creating new match...', {
+      userId,
       hasUserId: !!userId,
       userIdType: typeof userId,
       userIdValue: userId
     });
 
-    // Validate input parameters
-    if (!isGuest && !userId) {
-      throw new Error('UserId is required for non-guest users');
-    }
-
     const matchCode = generateMatchCode();
     const matchToSave = sanitizeMatchData({
       ...matchData,
       matchCode,
-      userId: userId || null,
-      isGuest,
-      isPublic: isGuest,
+      userId,
+      isGuest: false,
+      isPublic: false,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
@@ -199,14 +193,14 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
       hasTeams: !!matchToSave.teams,
       teamsCount: matchToSave.teams?.length
     });
-    
+
     try {
       const docRef = await addDoc(collection(db, 'matches'), matchToSave);
       console.log('✅ Match created with ID: ', docRef.id, 'Code:', matchCode);
-      
+
       // Clear cache
       matchesCache.clear();
-      
+
       return { matchCode, docId: docRef.id };
     } catch (error: any) {
       console.error('❌ Firestore error details:', {
@@ -225,17 +219,17 @@ export const createMatch = async (matchData: Match, userId?: string, isGuest: bo
 export const getMatchByCode = async (matchCode: string): Promise<Match | null> => {
   return withRetry(async () => {
     console.log('🔍 Getting match by code:', matchCode);
-    
+
     // Use where query instead of scanning all documents
     const matchesRef = collection(db, 'matches');
     const q = query(matchesRef, where('matchCode', '==', matchCode), limit(1));
     const snapshot = await getDocs(q);
-    
+
     if (snapshot.empty) {
       console.log('❌ Match not found:', matchCode);
       return null;
     }
-    
+
     const doc = snapshot.docs[0];
     console.log('✅ Match found:', matchCode);
     return doc.data() as Match;
@@ -246,7 +240,7 @@ export const getMatchByCode = async (matchCode: string): Promise<Match | null> =
 export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation(`getUserMatches_${userId}`, async () => {
     const cacheKey = `user_matches_${userId}`;
-    
+
     try {
       // Check cache first
       const cached = getCachedData(cacheKey);
@@ -264,39 +258,39 @@ export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & {
       const queryPromise = withRetry(async () => {
         const matchesRef = collection(db, 'matches');
         const q = query(
-          matchesRef, 
+          matchesRef,
           where('userId', '==', userId),
           where('isGuest', '==', false),
           orderBy('createdAt', 'desc'),
           limit(20) // Reduced limit for faster loading
         );
-        
+
         return await getDocs(q);
       });
 
       const snapshot = await Promise.race([queryPromise, timeoutPromise]);
-      
+
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as (FirebaseMatch & { id: string })[];
-      
+
       console.log('✅ Found', matches.length, 'user matches');
-      
+
       // Cache the results
       setCachedData(cacheKey, matches);
-      
+
       return matches;
     } catch (error: any) {
       console.error('❌ Error getting user matches:', error.code || error.message);
-      
+
       // Return cached data if available, even if stale
       const staleCache = matchesCache.get(cacheKey);
       if (staleCache) {
         console.log('📦 Returning stale cached data due to error');
         return staleCache.data;
       }
-      
+
       // Return empty array instead of throwing to prevent UI crashes
       return [];
     }
@@ -307,7 +301,7 @@ export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & {
 export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: string })[]> => {
   return trackFirebaseOperation('getCommunityMatches', async () => {
     const cacheKey = 'community_matches';
-    
+
     try {
       // Check cache first
       const cached = getCachedData(cacheKey);
@@ -325,38 +319,38 @@ export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: stri
       const queryPromise = withRetry(async () => {
         const matchesRef = collection(db, 'matches');
         const q = query(
-          matchesRef, 
+          matchesRef,
           where('isPublic', '==', true),
           orderBy('createdAt', 'desc'),
           limit(20) // Reduced limit for faster loading
         );
-        
+
         return await getDocs(q);
       });
 
       const snapshot = await Promise.race([queryPromise, timeoutPromise]);
-      
+
       const matches = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as (FirebaseMatch & { id: string })[];
-      
+
       console.log('✅ Found', matches.length, 'community matches');
-      
+
       // Cache the results
       setCachedData(cacheKey, matches);
-      
+
       return matches;
     } catch (error: any) {
       console.error('❌ Error getting community matches:', error.code || error.message);
-      
+
       // Return cached data if available, even if stale
       const staleCache = matchesCache.get(cacheKey);
       if (staleCache) {
         console.log('📦 Returning stale cached data due to error');
         return staleCache.data;
       }
-      
+
       // Return empty array instead of throwing to prevent UI crashes
       return [];
     }
@@ -366,7 +360,7 @@ export const getCommunityMatches = async (): Promise<(FirebaseMatch & { id: stri
 // Optimized get all matches with pagination
 export const getAllMatches = async (limitCount: number = 50): Promise<(FirebaseMatch & { id: string })[]> => {
   const cacheKey = `all_matches_${limitCount}`;
-  
+
   try {
     // Check cache first
     const cached = getCachedData(cacheKey);
@@ -375,23 +369,23 @@ export const getAllMatches = async (limitCount: number = 50): Promise<(FirebaseM
     }
 
     console.log('📋 Getting all matches...');
-    
+
     const matches = await withRetry(async () => {
       const matchesRef = collection(db, 'matches');
       const q = query(matchesRef, orderBy('createdAt', 'desc'), limit(limitCount));
       const snapshot = await getDocs(q);
-      
+
       return snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
       })) as (FirebaseMatch & { id: string })[];
     });
-    
+
     console.log('✅ Found', matches.length, 'total matches');
-    
+
     // Cache the results
     setCachedData(cacheKey, matches);
-    
+
     return matches;
   } catch (error: any) {
     console.error('❌ Error getting all matches:', error.code || error.message);
@@ -424,32 +418,32 @@ export const subscribeToMatch = (matchId: string, callback: (match: Match | null
 export const testFirestoreAPIEnabled = async (): Promise<{ enabled: boolean; message: string }> => {
   try {
     console.log('🧪 Testing if Firestore API is enabled...');
-    
+
     // Try a very simple read operation
     const testCollection = collection(db, 'test');
     const testQuery = query(testCollection, limit(1));
-    
+
     await getDocs(testQuery);
-    
+
     console.log('✅ Firestore API is enabled and working!');
     return { enabled: true, message: 'Firestore API is enabled and working!' };
   } catch (error: any) {
     console.error('❌ Firestore API test failed:', error.code, error.message);
-    
+
     if (error.code === 'permission-denied') {
-      return { 
-        enabled: true, 
-        message: 'API enabled but needs security rules setup' 
+      return {
+        enabled: true,
+        message: 'API enabled but needs security rules setup'
       };
     } else if (error.message?.includes('has not been used') || error.message?.includes('API')) {
-      return { 
-        enabled: false, 
-        message: 'Firestore API is not enabled. Please enable it in Google Cloud Console.' 
+      return {
+        enabled: false,
+        message: 'Firestore API is not enabled. Please enable it in Google Cloud Console.'
       };
     } else {
-      return { 
-        enabled: false, 
-        message: `API test failed: ${error.message}` 
+      return {
+        enabled: false,
+        message: `API test failed: ${error.message}`
       };
     }
   }

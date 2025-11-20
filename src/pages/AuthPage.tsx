@@ -1,12 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
+
+const getErrorMessage = (error: any) => {
+  console.error("Authentication Error Details:", error);
+
+  // Handle if error is just a string
+  if (typeof error === 'string') return error;
+
+  // Map common Firebase auth error codes to user-friendly messages
+  const code = error?.code;
+  switch (code) {
+    case 'auth/invalid-api-key':
+      return 'Configuration Error: Invalid Firebase API Key. Please check your .env file.';
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Invalid email or password. Please check your credentials and try again.';
+    case 'auth/email-already-in-use':
+      return 'An account with this email address already exists. Please sign in instead.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Please use at least 6 characters.';
+    case 'auth/too-many-requests':
+      return 'Access temporarily disabled due to too many failed attempts. Please try again later.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your internet connection.';
+    case 'auth/operation-not-allowed':
+      return 'This sign-in method is not enabled. Please contact support.';
+    default:
+      // Fallback to error message or string representation
+      return error?.message || 'An unexpected error occurred.';
+  }
+};
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signInWithEmail, signUpWithEmail, isLoading } = useAuth();
+  const { signInWithEmail, signUpWithEmail } = useAuth();
 
   // Check URL parameter to determine initial mode
   const urlMode = searchParams.get('mode');
@@ -17,6 +50,7 @@ const AuthPage: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update mode based on URL parameter changes
   useEffect(() => {
@@ -30,6 +64,7 @@ const AuthPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
 
     try {
       if (isLogin) {
@@ -39,10 +74,12 @@ const AuthPage: React.FC = () => {
       }
       navigate('/dashboard');
     } catch (error: any) {
-      setError(error.message || 'Authentication failed');
+      console.error("Authentication Error:", error);
+      setError(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
 
 
   const handleBack = () => {
@@ -91,8 +128,9 @@ const AuthPage: React.FC = () => {
         {/* Auth Form */}
         <div className="bg-white rounded-2xl p-8 shadow-xl">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-start">
+              <AlertCircle size={20} className="mr-2 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -157,10 +195,10 @@ const AuthPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full bg-cricket-blue text-white py-3 rounded-xl font-semibold hover:bg-cricket-blue/90 transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              {isSubmitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 

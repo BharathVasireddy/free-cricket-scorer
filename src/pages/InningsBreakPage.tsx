@@ -18,10 +18,10 @@ const InningsBreakPage: React.FC = () => {
   // Calculate batting stats from first innings
   const getBattingStats = () => {
     const teamPlayers = battingTeam?.players || [];
-    
+
     // Track all batsmen who played
     const batsmenStats = new Map();
-    
+
     firstInnings.overs.forEach(over => {
       over.balls.forEach(ball => {
         if (ball.batsmanId) {
@@ -34,7 +34,7 @@ const InningsBreakPage: React.FC = () => {
             isOut: false,
             dismissalType: ''
           };
-          
+
           current.runs += ball.runs;
           if (!ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball')) {
             current.balls += 1;
@@ -45,7 +45,7 @@ const InningsBreakPage: React.FC = () => {
             current.isOut = true;
             current.dismissalType = ball.wicketType || 'out';
           }
-          
+
           batsmenStats.set(ball.batsmanId, current);
         }
       });
@@ -53,13 +53,13 @@ const InningsBreakPage: React.FC = () => {
 
     return Array.from(batsmenStats.values()).map(stat => {
       const player = teamPlayers.find(p => p.id === stat.playerId);
-      
+
       // Check if this is a joker player
       let playerName = player?.name || 'Unknown';
       if (match.hasJoker && stat.playerId.includes('joker') && match.jokerName) {
         playerName = match.jokerName;
       }
-      
+
       return {
         ...stat,
         name: playerName,
@@ -71,53 +71,49 @@ const InningsBreakPage: React.FC = () => {
   // Calculate bowling stats from first innings
   const getBowlingStats = () => {
     const teamPlayers = bowlingTeam?.players || [];
-    
+
     const bowlerStats = new Map();
-    
+
+    // Iterate through each ball to correctly attribute to the bowler who bowled it
     firstInnings.overs.forEach(over => {
-      const current = bowlerStats.get(over.bowlerId) || {
-        playerId: over.bowlerId,
-        overs: 0,
-        balls: 0,
-        runs: 0,
-        wickets: 0,
-        maidens: 0
-      };
-      
-      let overRuns = 0;
-      let overBalls = 0;
-      let overWickets = 0;
-      
       over.balls.forEach(ball => {
-        overRuns += ball.runs + (ball.extras?.runs || 0);
+        const current = bowlerStats.get(ball.bowlerId) || {
+          playerId: ball.bowlerId,
+          overs: 0,
+          balls: 0,
+          runs: 0,
+          wickets: 0,
+          maidens: 0
+        };
+
+        // Add runs (including extras)
+        current.runs += ball.runs + (ball.extras?.runs || 0);
+
+        // Count legal balls (not wides or no-balls)
         if (!ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball')) {
-          overBalls += 1;
+          current.balls += 1;
         }
-        if (ball.wicket) overWickets += 1;
+
+        // Count wickets
+        if (ball.wicket) {
+          current.wickets += 1;
+        }
+
+        bowlerStats.set(ball.bowlerId, current);
       });
-      
-      current.runs += overRuns;
-      current.balls += overBalls;
-      current.wickets += overWickets;
-      if (overBalls === 6) {
-        current.overs += 1;
-        if (overRuns === 0) current.maidens += 1;
-      }
-      
-      bowlerStats.set(over.bowlerId, current);
     });
 
     return Array.from(bowlerStats.values()).map(stat => {
       const player = teamPlayers.find(p => p.id === stat.playerId);
       const economy = stat.balls > 0 ? ((stat.runs / stat.balls) * 6).toFixed(2) : '0.00';
-      const oversDisplay = `${stat.overs}.${stat.balls % 6}`;
-      
+      const oversDisplay = `${Math.floor(stat.balls / 6)}.${stat.balls % 6}`;
+
       // Check if this is a joker player
       let playerName = player?.name || 'Unknown';
       if (match.hasJoker && stat.playerId.includes('joker') && match.jokerName) {
         playerName = match.jokerName;
       }
-      
+
       return {
         ...stat,
         name: playerName,
@@ -230,7 +226,7 @@ const InningsBreakPage: React.FC = () => {
               <span>Start Second Innings</span>
             </div>
           </button>
-          
+
           <div className="text-center text-sm text-gray-600">
             {bowlingTeam?.name} needs {firstInnings.totalRuns + 1} runs to win
           </div>

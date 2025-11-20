@@ -3,14 +3,19 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDVGjoOp2Ic70YJv2oX6StrqDhlz7VNoBk",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "free-cricket-scorer.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "free-cricket-scorer",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "free-cricket-scorer.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "420193355868",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:420193355868:web:1066766bb0d322583f7e99",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-X39RYZ2DL4"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+// Validate that all required environment variables are present
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error('Missing required Firebase environment variables. Please check your .env.local file.');
+}
 
 // Diagnose Firebase setup
 export const diagnoseFirebase = () => {
@@ -20,7 +25,7 @@ export const diagnoseFirebase = () => {
   console.log('- API Key:', firebaseConfig.apiKey ? 'Present' : 'Missing');
   console.log('- App ID:', firebaseConfig.appId);
   console.log('- Storage Bucket:', firebaseConfig.storageBucket);
-  
+
   try {
     console.log('- Firebase App:', app ? 'Initialized' : 'Not initialized');
     console.log('- Firestore:', db ? 'Available' : 'Not available');

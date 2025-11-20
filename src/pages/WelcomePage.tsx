@@ -38,9 +38,7 @@ const WelcomePage: React.FC = () => {
       );
 
       setRecentMatches(uniqueMatches.slice(0, 3)); // Show only 3 most recent
-    } catch (error) {
-      console.error('Failed to load recent matches:', error);
-    } finally {
+    } catch (error) {    } finally {
       setMatchesLoading(false);
     }
   };
@@ -49,9 +47,7 @@ const WelcomePage: React.FC = () => {
     try {
       await logout();
       navigate('/landing');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    } catch (error) {    }
   };
 
   const formatMatchScore = (match: FirebaseMatch) => {

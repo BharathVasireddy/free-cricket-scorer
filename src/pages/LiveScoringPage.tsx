@@ -51,7 +51,6 @@ const LiveScoringPage: React.FC = () => {
   // Check for innings completion and navigate appropriately
   useEffect(() => {
     if (currentInnings?.isCompleted) {
-      console.log('Innings completed, navigating based on innings number:', currentInnings.number);
       if (currentInnings.number === 1) {
         // First innings completed - go to innings break
         navigate('/innings-break');
@@ -191,21 +190,10 @@ const LiveScoringPage: React.FC = () => {
     // ALWAYS check for new batsman after wicket - critical fix
     setTimeout(() => {
       const availableBatsmen = getAvailableBatsmen();
-      console.log('Wicket confirmed - available batsmen check:', {
-        available: availableBatsmen.length,
-        names: availableBatsmen.map(b => b.name),
-        totalWickets: currentInnings.totalWickets + 1, // +1 because wicket just added
-        isCompleted: currentInnings.isCompleted,
-        isSingleSide: match.isSingleSide
-      });
-
       // For both single-side and standard batting, check if new batsman needed
       if (availableBatsmen.length > 0 && !currentInnings.isCompleted) {
-        console.log('Opening batsman selection modal');
         setIsBatsmanModalOpen(true);
-      } else {
-        console.log('No new batsman needed - match/innings ending conditions met');
-      }
+      } else { }
     }, 1200); // Delay to ensure state update
   };
 
@@ -237,15 +225,6 @@ const LiveScoringPage: React.FC = () => {
         }
       });
     });
-
-    console.log('🏏 Available Batsmen Check:', {
-      totalWickets: currentInnings.totalWickets,
-      outBatsmenIds: Array.from(outBatsmenIds),
-      currentBatsmanIds,
-      hasJoker: match.hasJoker,
-      jokerName: match.jokerName
-    });
-
     // Get team players
     let availablePlayers = battingTeam?.players.filter(player =>
       !currentBatsmanIds.includes(player.id) && !outBatsmenIds.has(player.id)
@@ -268,14 +247,8 @@ const LiveScoringPage: React.FC = () => {
           name: match.jokerName,
           role: 'allrounder' as const
         });
-        console.log('🃏 Joker added to available batsmen');
-      } else {
-        console.log('🃏 Joker not available:', { jokerOutInTeamA, jokerOutInTeamB, jokerCurrentlyBatting });
-      }
-    }
-
-    console.log('Available batsmen:', availablePlayers.map(p => p.name));
-    return availablePlayers;
+      } else { }
+    } return availablePlayers;
   };
 
   // Get all bowlers with their status

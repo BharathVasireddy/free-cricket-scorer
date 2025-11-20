@@ -34,10 +34,7 @@ const MatchHistoryPage: React.FC = () => {
         setMatches([]);
         setIsLoading(false);
         return;
-      }
-
-      console.log('⚡ Loading matches...');
-      const userMatches = await getUserMatches(currentUser.uid);
+      }      const userMatches = await getUserMatches(currentUser.uid);
 
       // Deduplicate matches by ID to prevent React key warnings
       const uniqueMatches = userMatches.filter((match, index, self) =>
@@ -45,11 +42,7 @@ const MatchHistoryPage: React.FC = () => {
       );
 
       setMatches(uniqueMatches);
-      console.log('📊 Loaded:', uniqueMatches.length, 'matches');
-
     } catch (err: any) {
-      console.error('❌ Failed to load matches:', err);
-
       const errorMessage = err.code === 'permission-denied'
         ? 'Access denied. Please check your permissions.'
         : err.code === 'unavailable'
@@ -73,16 +66,12 @@ const MatchHistoryPage: React.FC = () => {
     setIsDeleting(true);
     try {
       await deleteMatch(deleteConfirmMatch.id);
-      console.log('✅ Match deleted successfully');
-
       // Close modal
       setDeleteConfirmMatch(null);
 
       // Reload matches
       await loadMatches(false);
-    } catch (err: any) {
-      console.error('❌ Failed to delete match:', err);
-      setError('Failed to delete match. Please try again.');
+    } catch (err: any) {      setError('Failed to delete match. Please try again.');
     } finally {
       setIsDeleting(false);
     }

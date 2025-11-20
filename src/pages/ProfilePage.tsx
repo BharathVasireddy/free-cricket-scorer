@@ -11,9 +11,7 @@ const ProfilePage: React.FC = () => {
     try {
       await logout();
       navigate('/landing');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    } catch (error) {    }
   };
 
   const getUserName = () => {

@@ -49,9 +49,7 @@ const MatchSetupPage: React.FC = () => {
           if (roster) {
             setSavedPlayers(roster.players);
           }
-        } catch (error) {
-          console.error('Failed to fetch roster:', error);
-        }
+        } catch (error) {        }
       }
     };
     fetchRoster();
@@ -181,9 +179,7 @@ const MatchSetupPage: React.FC = () => {
         // Ensure we have a valid user ID
         const userId = currentUser?.uid;
 
-        if (!userId) {
-          console.error('❌ No valid user ID found - authentication required');
-          throw new Error('Authentication required. Please sign in to create a match.');
+        if (!userId) {          throw new Error('Authentication required. Please sign in to create a match.');
         }
 
         await createMatch({
@@ -200,9 +196,7 @@ const MatchSetupPage: React.FC = () => {
           status: 'active',
         }, userId);
         navigate('/toss');
-      } catch (error) {
-        console.error('Failed to create match:', error);
-        setIsCreating(false);
+      } catch (error) {        setIsCreating(false);
         // Handle error - maybe show a toast or alert
       }
     }

@@ -130,9 +130,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
-      console.error('Error creating match:', error);
-      set({
+    } catch (error: any) {      set({
         error: error.message || 'Failed to create match',
         isLoading: false,
       });
@@ -538,14 +536,6 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   completeInnings: () => {
     const state = get();
     if (!state.match || !state.currentInnings) return;
-
-    console.log('completeInnings called:', {
-      inningsNumber: state.currentInnings.number,
-      isCompleted: state.currentInnings.isCompleted,
-      totalRuns: state.currentInnings.totalRuns,
-      totalWickets: state.currentInnings.totalWickets
-    });
-
     const updatedInnings = {
       ...state.currentInnings,
       isCompleted: true,
@@ -615,19 +605,6 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       // Match completed - Calculate winner and margin
       const firstInnings = state.match.innings[0];
       const secondInnings = updatedInnings;
-
-      console.log('🏆 Calculating match winner:', {
-        firstInnings: {
-          battingTeamId: firstInnings.battingTeamId,
-          runs: firstInnings.totalRuns
-        },
-        secondInnings: {
-          battingTeamId: secondInnings.battingTeamId,
-          runs: secondInnings.totalRuns
-        },
-        teams: state.match.teams.map(t => ({ id: t.id, name: t.name }))
-      });
-
       let winner = '';
       let winMargin = '';
 
@@ -640,35 +617,15 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           : totalPlayersAvailable - 1; // Standard: need one batsman left
         const wicketsRemaining = maxPossibleWickets - secondInnings.totalWickets;
         winner = winningTeam?.name || 'Unknown Team';
-        winMargin = `${wicketsRemaining} wickets`;
-
-        console.log('🏆 Second batting team won:', {
-          winningTeam: winningTeam?.name,
-          winner,
-          winMargin
-        });
-      } else if (firstInnings.totalRuns > secondInnings.totalRuns) {
+        winMargin = `${wicketsRemaining} wickets`;      } else if (firstInnings.totalRuns > secondInnings.totalRuns) {
         // First batting team won
         const winningTeam = state.match.teams.find(t => t.id === firstInnings.battingTeamId);
         const runMargin = firstInnings.totalRuns - secondInnings.totalRuns;
         winner = winningTeam?.name || 'Unknown Team';
-        winMargin = `${runMargin} runs`;
-
-        console.log('🏆 First batting team won:', {
-          winningTeam: winningTeam?.name,
-          winner,
-          winMargin
-        });
-      } else {
+        winMargin = `${runMargin} runs`;      } else {
         // Match tied
         winner = 'Match Tied';
-        winMargin = '';
-
-        console.log('🏆 Match tied');
-      }
-
-      console.log('🏆 Final winner details:', { winner, winMargin });
-
+        winMargin = '';      }
       set({
         match: {
           ...state.match,
@@ -859,21 +816,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   startMatchWithPlayers: (selectedBatsmen, selectedBowler) => {
     const state = get();
     if (!state.match || !state.currentInnings) return;
-
-    console.log('startMatchWithPlayers called:', {
-      inningsNumber: state.currentInnings.number,
-      currentIsCompleted: state.currentInnings.isCompleted,
-      selectedBatsmen,
-      selectedBowler,
-      matchCurrentInning: state.match.currentInning
-    });
-
     // Check if we need to create the second innings
     const isStartingSecondInnings = state.currentInnings.isCompleted && state.currentInnings.number === 1;
 
     if (isStartingSecondInnings) {
-      console.log('Creating second innings...');
-
       // Create the second innings
       const firstInnings = state.currentInnings;
       const secondInnings: Innings = {
@@ -943,13 +889,6 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
           maidens: 0,
         },
       });
-
-      console.log('Second innings created:', {
-        number: secondInnings.number,
-        target: secondInnings.target,
-        battingTeamId: secondInnings.battingTeamId
-      });
-
       return;
     }
 
@@ -1000,14 +939,6 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         totalBalls: 0,
       } : {})
     };
-
-    console.log('Updated innings after startMatchWithPlayers:', {
-      number: updatedInnings.number,
-      isCompleted: updatedInnings.isCompleted,
-      totalRuns: updatedInnings.totalRuns,
-      totalWickets: updatedInnings.totalWickets
-    });
-
     // Update the match with the new innings - handle both first and second innings
     const updatedMatch = {
       ...state.match,
@@ -1159,9 +1090,6 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         winner = 'Match Tied';
         winMargin = '';
       }
-
-      console.log('🏆 Final match result (endInningsEarly):', { winner, winMargin });
-
       set({
         match: {
           ...state.match,
@@ -1232,9 +1160,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     // Get the current over
     const currentOver = state.currentInnings.overs[state.currentInnings.overs.length - 1];
-    if (!currentOver || currentOver.balls.length === 0) {
-      console.log('No balls to undo');
-      return;
+    if (!currentOver || currentOver.balls.length === 0) {      return;
     }
 
     // Get the last ball
@@ -1325,10 +1251,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         ),
         status: 'active',
       },
-    });
-
-    console.log('✅ Last ball undone');
-  },
+    });  },
 
   saveToFirebase: async () => {
     const state = get();
@@ -1336,11 +1259,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
     try {
       await updateMatchRealtime(state.firebaseDocId, state.match);
-      set({ lastSaveTime: new Date() });
-      console.log('⚡ Match saved to Firebase at:', new Date().toISOString());
-    } catch (error: any) {
-      console.error('❌ Failed to save match to Firebase:', error.code || error.message);
-      set({ error: 'Failed to save match - will retry' });
+      set({ lastSaveTime: new Date() });    } catch (error: any) {      set({ error: 'Failed to save match - will retry' });
     }
   },
 })); 

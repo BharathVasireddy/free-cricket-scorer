@@ -25,8 +25,6 @@ const DashboardPage: React.FC = () => {
     setError('');
 
     try {
-      console.log('⚡ Loading matches with optimized service...');
-
       // Use Promise.allSettled to handle partial failures gracefully
       const [privateResult] = await Promise.allSettled([
         currentUser ? getUserMatches(currentUser.uid) : Promise.resolve([])
@@ -35,15 +33,11 @@ const DashboardPage: React.FC = () => {
       // Handle private matches result
       const privateData = privateResult.status === 'fulfilled' ? privateResult.value : [];
       if (privateResult.status === 'rejected') {
-        console.warn('Failed to load private matches:', privateResult.reason);
         setError(`Failed to load matches: ${privateResult.reason.message || 'Unknown error'}`);
       }
 
       setPrivateMatches(privateData);
-      console.log('📊 Loaded:', privateData.length, 'private matches');
-
     } catch (error: any) {
-      console.error('❌ Error loading matches:', error);
       setError(`Failed to load matches: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
@@ -57,8 +51,6 @@ const DashboardPage: React.FC = () => {
     setCommunityError(null);
 
     try {
-      console.log('🌍 Loading community matches...');
-
       // Add timeout to prevent hanging
       const timeout = setTimeout(() => {
         if (isLoadingCommunity) {
@@ -70,16 +62,8 @@ const DashboardPage: React.FC = () => {
       clearTimeout(timeout);
 
       setCommunityMatches(matches);
-      setRetryCount(0); // Reset on success
-      console.log('✅ Loaded', matches.length, 'community matches');
-    } catch (error: any) {
-      console.error('❌ Failed to load community matches:', error);
-
-      const errorMessage = error.code === 'permission-denied'
-        ? 'Access denied to community matches.'
-        : error.code === 'unavailable'
-          ? 'Community matches temporarily unavailable.'
-          : error.message || 'Failed to load community matches.';
+      setRetryCount(0); // Reset on success    } catch (error: any) {
+      const errorMessage = 'Failed to load community matches.';
 
       setCommunityError(errorMessage);
     } finally {

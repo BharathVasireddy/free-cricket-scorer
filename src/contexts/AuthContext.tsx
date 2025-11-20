@@ -32,13 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: any) => {
-      console.log('🔐 Auth state changed:', {
-        hasUser: !!user,
-        uid: user?.uid,
-        email: user?.email,
-        displayName: user?.displayName
-      });
-
       setCurrentUser(user);
       setIsLoading(false);
     });
@@ -50,9 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error('Error signing in with email:', error);
-      throw error;
+    } catch (error) {      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -63,9 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName });
-    } catch (error) {
-      console.error('Error signing up:', error);
-      throw error;
+    } catch (error) {      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -75,9 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out:', error);
-      throw error;
+    } catch (error) {      throw error;
     } finally {
       setIsLoading(false);
     }

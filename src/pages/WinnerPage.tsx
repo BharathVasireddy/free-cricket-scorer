@@ -27,11 +27,7 @@ const WinnerPage: React.FC = () => {
             throw new Error('No user ID found - match cannot be saved');
           }
           const code = await saveMatch(match, userId);
-          setMatchCode(code);
-          console.log('Match saved successfully with code:', code);
-        } catch (error) {
-          console.error('Failed to save match:', error);
-          setSaveError('Failed to save match to cloud');
+          setMatchCode(code);        } catch (error) {          setSaveError('Failed to save match to cloud');
         } finally {
           setIsSaving(false);
         }

@@ -20,9 +20,7 @@ export const getUserRoster = async (userId: string): Promise<PlayerRoster | null
             players: data.players || [],
             updatedAt: data.updatedAt?.toDate() || new Date()
         };
-    } catch (error) {
-        console.error('Error fetching user roster:', error);
-        throw error;
+    } catch (error) {        throw error;
     }
 };
 
@@ -43,12 +41,7 @@ export const savePlayerToRoster = async (userId: string, player: Omit<SavedPlaye
             userId,
             players,
             updatedAt: Timestamp.now()
-        });
-
-        console.log('Player saved to roster:', newPlayer.name);
-    } catch (error) {
-        console.error('Error saving player to roster:', error);
-        throw error;
+        });    } catch (error) {        throw error;
     }
 };
 
@@ -72,12 +65,7 @@ export const updatePlayerInRoster = async (
         await updateDoc(rosterRef, {
             players,
             updatedAt: Timestamp.now()
-        });
-
-        console.log('Player updated in roster:', playerId);
-    } catch (error) {
-        console.error('Error updating player in roster:', error);
-        throw error;
+        });    } catch (error) {        throw error;
     }
 };
 
@@ -95,12 +83,7 @@ export const deletePlayerFromRoster = async (userId: string, playerId: string): 
         await updateDoc(rosterRef, {
             players,
             updatedAt: Timestamp.now()
-        });
-
-        console.log('Player deleted from roster:', playerId);
-    } catch (error) {
-        console.error('Error deleting player from roster:', error);
-        throw error;
+        });    } catch (error) {        throw error;
     }
 };
 
@@ -119,9 +102,7 @@ export const bulkSavePlayers = async (userId: string, playerNames: string[]): Pr
                 createdAt: new Date()
             }));
 
-        if (newPlayers.length === 0) {
-            console.log('No new players to add');
-            return;
+        if (newPlayers.length === 0) {            return;
         }
 
         const players = roster ? [...roster.players, ...newPlayers] : newPlayers;
@@ -131,11 +112,6 @@ export const bulkSavePlayers = async (userId: string, playerNames: string[]): Pr
             userId,
             players,
             updatedAt: Timestamp.now()
-        });
-
-        console.log(`${newPlayers.length} players added to roster`);
-    } catch (error) {
-        console.error('Error bulk saving players:', error);
-        throw error;
+        });    } catch (error) {        throw error;
     }
 };

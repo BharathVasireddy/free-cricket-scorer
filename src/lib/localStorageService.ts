@@ -35,8 +35,6 @@ export const localStorageService = {
   // Save match locally
   async saveMatch(matchData: Match, userId?: string, isGuest: boolean = false): Promise<string> {
     try {
-      console.log('💾 Saving match locally...', { userId, isGuest });
-
       const matchCode = generateMatchCode();
       const firebaseMatch = convertToFirebaseMatch(matchData, userId, isGuest);
       firebaseMatch.matchCode = matchCode;
@@ -58,13 +56,8 @@ export const localStorageService = {
         const communityMatches = this.getCommunityMatches();
         communityMatches.push({ ...firebaseMatch, id: Date.now().toString() });
         localStorage.setItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES, JSON.stringify(communityMatches));
-      }
-
-      console.log('✅ Match saved locally with code:', matchCode);
-      return matchCode;
-    } catch (error) {
-      console.error('❌ Failed to save match locally:', error);
-      throw error;
+      }      return matchCode;
+    } catch (error) {      throw error;
     }
   },
 
@@ -79,9 +72,7 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(`${LOCAL_STORAGE_KEYS.USER_MATCHES}_${userId}`);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('❌ Failed to get user matches from localStorage:', error);
-      return [];
+    } catch (error) {      return [];
     }
   },
 
@@ -90,9 +81,7 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('❌ Failed to get community matches from localStorage:', error);
-      return [];
+    } catch (error) {      return [];
     }
   },
 
@@ -101,9 +90,7 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.MATCHES);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('❌ Failed to get all matches from localStorage:', error);
-      return [];
+    } catch (error) {      return [];
     }
   },
 
@@ -113,9 +100,7 @@ export const localStorageService = {
       const allMatches = this.getAllMatches();
       const match = allMatches.find(m => m.matchCode === matchCode);
       return match || null;
-    } catch (error) {
-      console.error('❌ Failed to get match by code from localStorage:', error);
-      return null;
+    } catch (error) {      return null;
     }
   },
 
@@ -127,12 +112,8 @@ export const localStorageService = {
 
       if (index !== -1) {
         allMatches[index] = { ...allMatches[index], ...matchData, updatedAt: new Date() };
-        localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));
-        console.log('✅ Match updated locally');
-      }
-    } catch (error) {
-      console.error('❌ Failed to update match locally:', error);
-      throw error;
+        localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));      }
+    } catch (error) {      throw error;
     }
   },
 
@@ -140,7 +121,5 @@ export const localStorageService = {
   clearAllData(): void {
     Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
-    });
-    console.log('🗑️ All local match data cleared');
-  }
+    });  }
 }; 

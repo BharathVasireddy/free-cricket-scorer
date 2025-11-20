@@ -17,24 +17,6 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   throw new Error('Missing required Firebase environment variables. Please check your .env.local file.');
 }
 
-// Diagnose Firebase setup
-export const diagnoseFirebase = () => {
-  console.log('🔧 Firebase Configuration Diagnostics:');
-  console.log('- Project ID:', firebaseConfig.projectId);
-  console.log('- Auth Domain:', firebaseConfig.authDomain);
-  console.log('- API Key:', firebaseConfig.apiKey ? 'Present' : 'Missing');
-  console.log('- App ID:', firebaseConfig.appId);
-  console.log('- Storage Bucket:', firebaseConfig.storageBucket);
-
-  try {
-    console.log('- Firebase App:', app ? 'Initialized' : 'Not initialized');
-    console.log('- Firestore:', db ? 'Available' : 'Not available');
-    console.log('- Auth:', auth ? 'Available' : 'Not available');
-  } catch (error) {
-    console.error('- Error during diagnostics:', error);
-  }
-};
-
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -44,7 +26,4 @@ export const db = getFirestore(app);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Run diagnostics on import
-diagnoseFirebase();
-
-export default app; 
+export default app;

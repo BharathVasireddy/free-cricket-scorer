@@ -31,9 +31,7 @@ const PlayerRosterPage: React.FC = () => {
         try {
             const userRoster = await getUserRoster(currentUser.uid);
             setRoster(userRoster?.players || []);
-        } catch (error) {
-            console.error('Failed to load roster:', error);
-        } finally {
+        } catch (error) {        } finally {
             setIsLoadingRoster(false);
         }
     };
@@ -63,9 +61,7 @@ const PlayerRosterPage: React.FC = () => {
             setNewPlayerRole('allrounder');
             setIsAddPlayerModalOpen(false);
             await loadRoster();
-        } catch (error) {
-            console.error('Failed to add player:', error);
-            alert('Failed to add player. Please try again.');
+        } catch (error) {            alert('Failed to add player. Please try again.');
         }
     };
 
@@ -89,9 +85,7 @@ const PlayerRosterPage: React.FC = () => {
             setNewPlayerRole('allrounder');
             setIsEditPlayerModalOpen(false);
             await loadRoster();
-        } catch (error) {
-            console.error('Failed to update player:', error);
-            alert('Failed to update player. Please try again.');
+        } catch (error) {            alert('Failed to update player. Please try again.');
         }
     };
 
@@ -103,9 +97,7 @@ const PlayerRosterPage: React.FC = () => {
         try {
             await deletePlayerFromRoster(currentUser.uid, playerId);
             await loadRoster();
-        } catch (error) {
-            console.error('Failed to delete player:', error);
-            alert('Failed to delete player. Please try again.');
+        } catch (error) {            alert('Failed to delete player. Please try again.');
         }
     };
 

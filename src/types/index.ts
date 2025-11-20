@@ -1,7 +1,8 @@
 export interface Player {
   id: string;
   name: string;
-  role: 'batsman' | 'bowler' | 'allrounder';
+  role?: 'batsman' | 'bowler' | 'allrounder';
+  phoneNumber?: string;
 }
 
 export interface Team {
@@ -51,6 +52,8 @@ export interface Match {
   hasJoker: boolean;
   jokerName?: string;
   isSingleSide: boolean;
+  wideRunPenalty: boolean;  // Whether wide balls include +1 run penalty (default: true)
+  noBallRunPenalty: boolean; // Whether no-balls include +1 run penalty (default: true)
   currentInning: number;
   innings: Innings[];
   status: 'setup' | 'active' | 'completed';
@@ -62,12 +65,13 @@ export interface Match {
   tossDecision?: 'bat' | 'bowl';
   winner?: string;
   winMargin?: string;
+  userId?: string;
 }
 
 // Extended type for Firebase stored matches
 export interface FirebaseMatch extends Match {
   matchCode?: string;
-  userId?: string | null;
+  userId?: string;
   isGuest?: boolean;
   isPublic?: boolean;
   updatedAt?: any; // Firestore Timestamp
@@ -103,4 +107,19 @@ export interface MatchState {
   currentBowler: BowlerStats | null;
   isLoading: boolean;
   error: string | null;
+}
+
+// Player Roster Management
+export interface SavedPlayer {
+  id: string;
+  name: string;
+  phoneNumber?: string;
+  role?: 'batsman' | 'bowler' | 'allrounder';
+  createdAt: Date;
+}
+
+export interface PlayerRoster {
+  userId: string;
+  players: SavedPlayer[];
+  updatedAt: Date;
 } 

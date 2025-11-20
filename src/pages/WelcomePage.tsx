@@ -31,7 +31,13 @@ const WelcomePage: React.FC = () => {
 
     try {
       const matches = await getUserMatches(currentUser.uid);
-      setRecentMatches(matches.slice(0, 3)); // Show only 3 most recent
+
+      // Deduplicate matches by ID to prevent React key warnings
+      const uniqueMatches = matches.filter((match, index, self) =>
+        index === self.findIndex((m) => m.id === match.id)
+      );
+
+      setRecentMatches(uniqueMatches.slice(0, 3)); // Show only 3 most recent
     } catch (error) {
       console.error('Failed to load recent matches:', error);
     } finally {

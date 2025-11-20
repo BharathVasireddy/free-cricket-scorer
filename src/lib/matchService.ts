@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, where, doc, updateDoc, onSnapshot, Timestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, updateDoc, setDoc, deleteDoc, onSnapshot, Timestamp, limit } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Match, FirebaseMatch } from '../types';
 import { trackFirebaseOperation, CacheTracker } from '../utils/performanceMonitor';
@@ -128,21 +128,26 @@ const setCachedData = (cacheKey: string, data: any[]): void => {
 // Optimized save function - remove redundant connection test
 export const saveMatch = async (matchData: Match, userId: string): Promise<string> => {
   return withRetry(async () => {
-    console.log('💾 Saving match...', { userId });
+    console.log('💾 Saving match...', { userId, matchId: matchData.id, winner: matchData.winner });
 
-    const matchCode = generateMatchCode();
+    if (!matchData.winner && matchData.status === 'completed') {
+      console.warn('⚠️ Warning: Saving completed match without winner!');
+    }
+
+    const matchCode = (matchData as any).matchCode || generateMatchCode();
     const matchToSave = sanitizeMatchData({
       ...matchData,
       matchCode,
       userId,
       isGuest: false,
       isPublic: false,
-      createdAt: Timestamp.now(),
+      createdAt: matchData.createdAt || Timestamp.now(), // Preserve original creation time
       updatedAt: Timestamp.now()
     });
 
-    const docRef = await addDoc(collection(db, 'matches'), matchToSave);
-    console.log('✅ Match saved with ID: ', docRef.id, 'Code:', matchCode);
+    // Use setDoc with the match ID to prevent duplicates
+    await setDoc(doc(db, 'matches', matchData.id), matchToSave);
+    console.log('✅ Match saved with ID: ', matchData.id, 'Code:', matchCode);
 
     // Clear relevant cache
     matchesCache.clear();
@@ -169,6 +174,7 @@ export const createMatch = async (matchData: Match, userId: string): Promise<{ m
   return withRetry(async () => {
     console.log('🆕 Creating new match...', {
       userId,
+      matchId: matchData.id,
       hasUserId: !!userId,
       userIdType: typeof userId,
       userIdValue: userId
@@ -187,6 +193,7 @@ export const createMatch = async (matchData: Match, userId: string): Promise<{ m
 
     console.log('🔍 Match data to save:', {
       matchCode,
+      matchId: matchData.id,
       userId: matchToSave.userId,
       isGuest: matchToSave.isGuest,
       isPublic: matchToSave.isPublic,
@@ -195,13 +202,14 @@ export const createMatch = async (matchData: Match, userId: string): Promise<{ m
     });
 
     try {
-      const docRef = await addDoc(collection(db, 'matches'), matchToSave);
-      console.log('✅ Match created with ID: ', docRef.id, 'Code:', matchCode);
+      // Use setDoc with the match ID to ensure consistency with saveMatch
+      await setDoc(doc(db, 'matches', matchData.id), matchToSave);
+      console.log('✅ Match created with ID: ', matchData.id, 'Code:', matchCode);
 
       // Clear cache
       matchesCache.clear();
 
-      return { matchCode, docId: docRef.id };
+      return { matchCode, docId: matchData.id };
     } catch (error: any) {
       console.error('❌ Firestore error details:', {
         code: error.code,
@@ -212,6 +220,21 @@ export const createMatch = async (matchData: Match, userId: string): Promise<{ m
       });
       throw error;
     }
+  });
+};
+
+// Delete match function
+export const deleteMatch = async (matchId: string): Promise<void> => {
+  return withRetry(async () => {
+    console.log('🗑️ Deleting match:', matchId);
+
+    const matchRef = doc(db, 'matches', matchId);
+    await deleteDoc(matchRef);
+
+    console.log('✅ Match deleted successfully');
+
+    // Clear cache to ensure fresh data on next load
+    matchesCache.clear();
   });
 };
 
@@ -260,7 +283,6 @@ export const getUserMatches = async (userId: string): Promise<(FirebaseMatch & {
         const q = query(
           matchesRef,
           where('userId', '==', userId),
-          where('isGuest', '==', false),
           orderBy('createdAt', 'desc'),
           limit(20) // Reduced limit for faster loading
         );

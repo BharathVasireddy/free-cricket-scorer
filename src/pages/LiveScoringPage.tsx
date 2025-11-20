@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/matchStore';
 import { useNavigate } from 'react-router-dom';
+import type { Ball } from '../types';
 
 const LiveScoringPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const LiveScoringPage: React.FC = () => {
   const [isBatsmanModalOpen, setIsBatsmanModalOpen] = useState(false);
   const [isLastManModalOpen, setIsLastManModalOpen] = useState(false);
   const [lastManBatsmanId, setLastManBatsmanId] = useState<string>('');
-  
+
   // Animation states
   const [animationType, setAnimationType] = useState<'four' | 'six' | 'wicket' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -84,8 +85,8 @@ const LiveScoringPage: React.FC = () => {
   // Handle both single batsman and pair of batsmen
   // Check if we're in single batting mode (either from start or switched during match)
   const isCurrentlySingleBatting = match.isSingleSide || !Array.isArray(currentBatsmen);
-  const batsmen = isCurrentlySingleBatting 
-    ? [currentBatsmen as any] 
+  const batsmen = isCurrentlySingleBatting
+    ? [currentBatsmen as any]
     : currentBatsmen as [any, any];
 
   // Animation trigger function
@@ -132,6 +133,8 @@ const LiveScoringPage: React.FC = () => {
   };
 
   const handleExtra = (type: 'wide' | 'noball' | 'bye' | 'legbye', runs: number = 1) => {
+    if (!match || !currentBatsmen || !currentBowler) return;
+
     // For bye/legbye, check if batsman is out
     if ((type === 'bye' || type === 'legbye') && batsmen[selectedBatsmanIndex].isOut) {
       alert('This batsman is out and cannot continue batting! Select a new batsman.');
@@ -139,13 +142,25 @@ const LiveScoringPage: React.FC = () => {
       return;
     }
 
-    addBall({
+    // Calculate total runs based on penalty settings
+    let totalRuns = runs;
+
+    // Add penalty run if enabled in match settings
+    if (type === 'wide' && match.wideRunPenalty) {
+      totalRuns += 1; // +1 for the wide itself
+    } else if (type === 'noball' && match.noBallRunPenalty) {
+      totalRuns += 1; // +1 for the no-ball itself
+    }
+
+    const ball: Omit<Ball, 'overNumber' | 'ballNumber'> = {
       runs: 0,
-      extras: { type, runs },
+      extras: { type, runs: totalRuns },
       wicket: false,
-      batsmanId: type === 'bye' || type === 'legbye' ? batsmen[selectedBatsmanIndex].playerId : undefined,
       bowlerId: currentBowler.playerId,
-    });
+      batsmanId: type === 'bye' || type === 'legbye' ? batsmen[selectedBatsmanIndex].playerId : undefined,
+    };
+
+    addBall(ball);
   };
 
   const handleWicket = () => {
@@ -155,7 +170,7 @@ const LiveScoringPage: React.FC = () => {
       setIsBatsmanModalOpen(true);
       return;
     }
-    
+
     setIsWicketModalOpen(true);
   };
 
@@ -169,10 +184,10 @@ const LiveScoringPage: React.FC = () => {
       bowlerId: currentBowler.playerId,
     });
     setIsWicketModalOpen(false);
-    
+
     // Trigger wicket animation
     triggerAnimation('wicket');
-    
+
     // ALWAYS check for new batsman after wicket - critical fix
     setTimeout(() => {
       const availableBatsmen = getAvailableBatsmen();
@@ -183,7 +198,7 @@ const LiveScoringPage: React.FC = () => {
         isCompleted: currentInnings.isCompleted,
         isSingleSide: match.isSingleSide
       });
-      
+
       // For both single-side and standard batting, check if new batsman needed
       if (availableBatsmen.length > 0 && !currentInnings.isCompleted) {
         console.log('Opening batsman selection modal');
@@ -207,13 +222,13 @@ const LiveScoringPage: React.FC = () => {
 
   // Get available batsmen (excluding current batsmen and out batsmen)
   const getAvailableBatsmen = () => {
-    const currentBatsmanIds = isCurrentlySingleBatting 
+    const currentBatsmanIds = isCurrentlySingleBatting
       ? [batsmen[0].playerId]
       : [batsmen[0].playerId, batsmen[1].playerId];
-    
+
     // Get all batsmen who are currently out from current innings
     const outBatsmenIds = new Set<string>();
-    
+
     // Check each over for wickets to find out batsmen
     currentInnings.overs.forEach(over => {
       over.balls.forEach(ball => {
@@ -222,7 +237,7 @@ const LiveScoringPage: React.FC = () => {
         }
       });
     });
-    
+
     console.log('🏏 Available Batsmen Check:', {
       totalWickets: currentInnings.totalWickets,
       outBatsmenIds: Array.from(outBatsmenIds),
@@ -230,101 +245,95 @@ const LiveScoringPage: React.FC = () => {
       hasJoker: match.hasJoker,
       jokerName: match.jokerName
     });
-    
+
     // Get team players
-    let availablePlayers = battingTeam?.players.filter(player => 
+    let availablePlayers = battingTeam?.players.filter(player =>
       !currentBatsmanIds.includes(player.id) && !outBatsmenIds.has(player.id)
     ) || [];
-    
+
     // Add joker if available for both teams
     if (match.hasJoker && match.jokerName) {
       // Check if joker is already out
       const jokerOutInTeamA = outBatsmenIds.has('joker-teamA');
       const jokerOutInTeamB = outBatsmenIds.has('joker-teamB');
-      
+
       // Check if joker is currently batting
       const jokerCurrentlyBatting = currentBatsmanIds.includes('joker-teamA') || currentBatsmanIds.includes('joker-teamB');
-      
-             // If joker not out and not currently batting, add to available
-       if (!jokerOutInTeamA && !jokerOutInTeamB && !jokerCurrentlyBatting) {
-         // Add virtual joker player
-         availablePlayers.push({
-           id: `joker-${battingTeam?.name.toLowerCase().replace(/\s+/g, '')}`,
-           name: match.jokerName,
-           role: 'allrounder' as const
-         });
-         console.log('🃏 Joker added to available batsmen');
+
+      // If joker not out and not currently batting, add to available
+      if (!jokerOutInTeamA && !jokerOutInTeamB && !jokerCurrentlyBatting) {
+        // Add virtual joker player
+        availablePlayers.push({
+          id: `joker-${battingTeam?.name.toLowerCase().replace(/\s+/g, '')}`,
+          name: match.jokerName,
+          role: 'allrounder' as const
+        });
+        console.log('🃏 Joker added to available batsmen');
       } else {
         console.log('🃏 Joker not available:', { jokerOutInTeamA, jokerOutInTeamB, jokerCurrentlyBatting });
       }
     }
-    
+
     console.log('Available batsmen:', availablePlayers.map(p => p.name));
     return availablePlayers;
   };
 
-  // Get available bowlers (excluding current bowler, last over bowler, and joker if batting)
-  const getAvailableBowlers = () => {
-    const lastOverBowlerId = currentInnings.overs.length > 1 
-      ? currentInnings.overs[currentInnings.overs.length - 2]?.bowlerId 
-      : null;
-    
-    // Get current batsmen IDs
-    const currentBatsmanIds = isCurrentlySingleBatting 
-      ? [batsmen[0].playerId]
-      : [batsmen[0].playerId, batsmen[1].playerId];
-    
-    // Filter out bowlers
-    let availableBowlers = bowlingTeam?.players.filter(player => 
-      player.id !== currentBowler.playerId && 
-      player.id !== lastOverBowlerId
-    ) || [];
-    
-    // If joker exists and is currently batting, remove from bowling options
-    if (match.hasJoker && match.jokerName) {
-      const jokerIsBatting = currentBatsmanIds.some(id => {
-        const player = battingTeam?.players.find(p => p.id === id);
-        return player?.name === match.jokerName;
-      });
-      
-      if (jokerIsBatting) {
-        // Remove joker from bowling options
-        availableBowlers = availableBowlers.filter(player => 
-          player.name !== match.jokerName
-        );
-        console.log('Joker is batting - removed from bowling options');
-      }
+  // Get all bowlers with their status
+  const getAllBowlersWithStatus = () => {
+    // Check if we're mid-over (current over exists and has balls but isn't completed)
+    const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
+    const isMidOver = currentOver && !currentOver.completed;
+
+    // Get the last COMPLETED over's bowler
+    let lastCompletedOverBowlerId = null;
+    if (isMidOver && currentInnings.overs.length > 1) {
+      // If mid-over, get the second-to-last over (last completed)
+      lastCompletedOverBowlerId = currentInnings.overs[currentInnings.overs.length - 2]?.bowlerId;
+    } else if (!isMidOver && currentInnings.overs.length > 0) {
+      // If over just completed, get the last over
+      lastCompletedOverBowlerId = currentInnings.overs[currentInnings.overs.length - 1]?.bowlerId;
     }
-    
-    return availableBowlers;
+
+    return bowlingTeam?.players.map(player => {
+      let status = '';
+      let isDisabled = false;
+
+      // Only disable the bowler who bowled the last COMPLETED over
+      if (player.id === lastCompletedOverBowlerId) {
+        status = 'Bowled Last Over';
+        isDisabled = true;
+      }
+
+      return { player, status, isDisabled };
+    }) || [];
   };
 
   const getCurrentOver = () => {
     const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
     if (!currentOver || currentOver.balls.length === 0) return [];
-    
+
     return currentOver.balls.map((ball, index) => {
       let value = '';
       let colorClass = 'bg-gray-100 text-gray-700';
-      
+
       if (ball.wicket) {
         value = 'W';
         colorClass = 'bg-red-500 text-white';
       } else if (ball.extras) {
         switch (ball.extras.type) {
-          case 'wide': 
+          case 'wide':
             value = `Wd${ball.extras.runs > 1 ? ball.extras.runs : ''}`;
             colorClass = 'bg-orange-500 text-white';
             break;
-          case 'noball': 
+          case 'noball':
             value = `Nb${ball.extras.runs > 1 ? ball.extras.runs : ''}`;
             colorClass = 'bg-red-500 text-white';
             break;
-          case 'bye': 
+          case 'bye':
             value = `B${ball.extras.runs}`;
             colorClass = 'bg-gray-400 text-white';
             break;
-          case 'legbye': 
+          case 'legbye':
             value = `Lb${ball.extras.runs}`;
             colorClass = 'bg-gray-400 text-white';
             break;
@@ -336,7 +345,7 @@ const LiveScoringPage: React.FC = () => {
         else if (ball.runs === 0) colorClass = 'bg-gray-200 text-gray-600';
         else colorClass = 'bg-blue-100 text-blue-800';
       }
-      
+
       return { value, colorClass, key: index };
     });
   };
@@ -350,11 +359,11 @@ const LiveScoringPage: React.FC = () => {
 
   // Over is complete if we have 6 valid balls AND there's a current over AND the current bowler matches
   const isOverComplete = ballsThisOver >= 6 && currentOver && currentOver.bowlerId === currentBowler.playerId;
-  
+
   // Check if match overs are complete
   const totalOversCompleted = Math.floor(currentInnings.totalBalls / 6);
   const isMatchComplete = totalOversCompleted >= match.overs;
-  
+
   // Disable scoring if over is complete OR match is complete
   const shouldDisableScoring = isOverComplete || isMatchComplete;
 
@@ -376,7 +385,7 @@ const LiveScoringPage: React.FC = () => {
     // Check if innings is completed (set by the store)
     if (currentInnings.isCompleted) {
       const isFirstInnings = currentInnings.number === 1;
-      
+
       // Navigate based on which innings just completed
       const timer = setTimeout(() => {
         if (isFirstInnings) {
@@ -442,13 +451,12 @@ const LiveScoringPage: React.FC = () => {
       </div>
 
       {/* Score Display - Mobile Compact */}
-      <div className={`relative overflow-hidden px-3 py-3 flex-shrink-0 transition-all duration-700 ${
-        animationType === 'four' ? 'bg-gradient-to-r from-green-500 to-green-600' :
+      <div className={`relative overflow-hidden px-3 py-3 flex-shrink-0 transition-all duration-700 ${animationType === 'four' ? 'bg-gradient-to-r from-green-500 to-green-600' :
         animationType === 'six' ? 'bg-gradient-to-r from-purple-500 to-purple-600' :
-        animationType === 'wicket' ? 'bg-gradient-to-r from-red-500 to-red-600' :
-        'bg-gradient-to-r from-cricket-blue to-blue-600'
-      }`}>
-        
+          animationType === 'wicket' ? 'bg-gradient-to-r from-red-500 to-red-600' :
+            'bg-gradient-to-r from-cricket-blue to-blue-600'
+        }`}>
+
         {/* Ripple Effect Background */}
         {isAnimating && (
           <div className="absolute inset-0 overflow-hidden">
@@ -473,11 +481,10 @@ const LiveScoringPage: React.FC = () => {
         {/* Sliding Celebration Text */}
         {isAnimating && (
           <div className="absolute inset-0 flex items-center justify-center z-30">
-            <div className={`font-black text-white text-4xl transform transition-all duration-700 ${
-              animationType === 'four' ? 'animate-bounce translate-x-0' :
+            <div className={`font-black text-white text-4xl transform transition-all duration-700 ${animationType === 'four' ? 'animate-bounce translate-x-0' :
               animationType === 'six' ? 'animate-spin translate-x-0' :
-              animationType === 'wicket' ? 'animate-pulse translate-x-0' : 'translate-x-full'
-            }`}>
+                animationType === 'wicket' ? 'animate-pulse translate-x-0' : 'translate-x-full'
+              }`}>
               {animationType === 'four' && '🏏 BOUNDARY FOUR!'}
               {animationType === 'six' && '⚡ MAXIMUM SIX!'}
               {animationType === 'wicket' && '💥 WICKET FALLS!'}
@@ -486,21 +493,19 @@ const LiveScoringPage: React.FC = () => {
         )}
 
         {/* Score Content - Card Flip Style */}
-        <div className={`transition-all duration-500 transform ${
-          isAnimating ? 'rotateY-180 opacity-0' : 'rotateY-0 opacity-100'
-        }`} style={{ 
-          transform: isAnimating ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          transformStyle: 'preserve-3d'
-        }}>
-          
+        <div className={`transition-all duration-500 transform ${isAnimating ? 'rotateY-180 opacity-0' : 'rotateY-0 opacity-100'
+          }`} style={{
+            transform: isAnimating ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            transformStyle: 'preserve-3d'
+          }}>
+
           {/* Team Name and Score - Mobile Compact */}
           <div className="flex items-center justify-center space-x-3 mb-2">
             <div className="text-lg font-bold text-white">
               {battingTeam?.name}
             </div>
-            <div className={`text-4xl font-black text-white transition-all duration-300 ${
-              !isAnimating && animationType ? 'animate-pulse' : ''
-            }`}>
+            <div className={`text-4xl font-black text-white transition-all duration-300 ${!isAnimating && animationType ? 'animate-pulse' : ''
+              }`}>
               {currentInnings.totalRuns}/{currentInnings.totalWickets}
             </div>
           </div>
@@ -515,9 +520,9 @@ const LiveScoringPage: React.FC = () => {
                 /{match.overs}
               </span>
             </div>
-            
+
             <div className="w-1 h-1 bg-white/50 rounded-full"></div>
-            
+
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
                 {currentInnings.totalBalls > 0 ? ((currentInnings.totalRuns / currentInnings.totalBalls) * 6).toFixed(2) : '0.00'}
@@ -534,9 +539,9 @@ const LiveScoringPage: React.FC = () => {
                 <br className="block sm:hidden" />
                 <span className="ml-2 text-white/80">
                   RRR: {
-                    ((match.overs * 6) - currentInnings.totalBalls) > 0 ? 
-                    (((currentInnings.target - currentInnings.totalRuns) / (((match.overs * 6) - currentInnings.totalBalls) / 6)).toFixed(1)) : 
-                    '0.0'
+                    ((match.overs * 6) - currentInnings.totalBalls) > 0 ?
+                      (((currentInnings.target - currentInnings.totalRuns) / (((match.overs * 6) - currentInnings.totalBalls) / 6)).toFixed(1)) :
+                      '0.0'
                   }
                 </span>
               </div>
@@ -566,19 +571,18 @@ const LiveScoringPage: React.FC = () => {
                 const isOnStrike = selectedBatsmanIndex === index;
                 const showStrike = !isCurrentlySingleBatting;
                 const strikeRate = batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0';
-                
+
                 return (
                   <div
                     key={batsman.playerId}
-                    className={`border-l-4 pl-3 py-2 ${
-                      isOnStrike ? 'border-cricket-blue bg-blue-50' : 'border-gray-200'
-                    }`}
+                    className={`border-l-4 pl-3 py-2 ${isOnStrike ? 'border-cricket-blue bg-blue-50' : 'border-gray-200'
+                      }`}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900 text-sm">
-                          {player?.name} 
-                          {showStrike && isOnStrike && <span className="ml-1 text-cricket-blue">*</span>} 
+                          {player?.name}
+                          {showStrike && isOnStrike && <span className="ml-1 text-cricket-blue">*</span>}
                           {isJoker && <span className="ml-1">🃏</span>}
                         </div>
                         <div className="text-xs text-gray-600 mt-1 space-x-4">
@@ -600,7 +604,7 @@ const LiveScoringPage: React.FC = () => {
               })}
             </div>
           </div>
-          
+
           {/* Bowler */}
           <div>
             <div className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide flex justify-between items-center">
@@ -633,7 +637,7 @@ const LiveScoringPage: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* This Over - Mobile Compact */}
         <div>
           <div className="mb-1">
@@ -712,19 +716,17 @@ const LiveScoringPage: React.FC = () => {
               {[0, 1, 2, 3, 4, 6].map(runs => {
                 const currentBatsman = batsmen[selectedBatsmanIndex];
                 const isJoker = match.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === match.jokerName;
-                
+
                 return (
                   <button
                     key={runs}
                     onClick={() => handleScoreButton(runs)}
                     disabled={shouldDisableScoring}
-                    className={`h-14 rounded-lg font-bold text-lg transition-all ${
-                      runs === 4 || runs === 6 
-                        ? 'bg-green-500 text-white hover:bg-green-600' 
-                        : 'bg-white border-2 border-gray-300 text-gray-900 hover:bg-gray-50'
-                    } ${shouldDisableScoring ? 'opacity-50 cursor-not-allowed' : ''} ${
-                      isJoker ? 'ring-2 ring-yellow-400' : ''
-                    }`}
+                    className={`h-14 rounded-lg font-bold text-lg transition-all ${runs === 4 || runs === 6
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : 'bg-white border-2 border-gray-300 text-gray-900 hover:bg-gray-50'
+                      } ${shouldDisableScoring ? 'opacity-50 cursor-not-allowed' : ''} ${isJoker ? 'ring-2 ring-yellow-400' : ''
+                      }`}
                   >
                     {runs}
                   </button>
@@ -771,11 +773,10 @@ const LiveScoringPage: React.FC = () => {
             <button
               onClick={handleWicket}
               disabled={shouldDisableScoring}
-              className={`w-full py-3 text-lg font-bold rounded-lg transition-all ${
-                shouldDisableScoring 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                  : 'bg-red-500 text-white hover:bg-red-600'
-              }`}
+              className={`w-full py-3 text-lg font-bold rounded-lg transition-all ${shouldDisableScoring
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
             >
               🏏 WICKET
             </button>
@@ -788,8 +789,8 @@ const LiveScoringPage: React.FC = () => {
             )}
             {isOverComplete && !isMatchComplete && (
               <div className="text-center py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
-                Over Complete! 
-                <button 
+                Over Complete!
+                <button
                   onClick={() => setIsBowlerModalOpen(true)}
                   className="ml-2 underline font-semibold"
                 >
@@ -801,8 +802,8 @@ const LiveScoringPage: React.FC = () => {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => {/* TODO: Implement undo */}}
-                className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => useMatchStore.getState().undoLastBall()}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
               >
                 ↶ Undo
               </button>
@@ -824,7 +825,7 @@ const LiveScoringPage: React.FC = () => {
             <h3 className="text-lg font-bold mb-4 text-center">How was the batsman out?</h3>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
-                'Bowled', 'Caught', 'LBW', 'Stumped', 
+                'Bowled', 'Caught', 'LBW', 'Stumped',
                 'Run Out', 'Hit Wicket', 'Retired', 'Other'
               ].map(type => (
                 <button
@@ -852,31 +853,30 @@ const LiveScoringPage: React.FC = () => {
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold mb-4 text-center">Select New Bowler</h3>
             <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
-              {getAvailableBowlers().map(player => {
+              {getAllBowlersWithStatus().map(({ player, status, isDisabled }) => {
                 const isJoker = match.hasJoker && player.name === match.jokerName;
                 return (
                   <button
                     key={player.id}
-                    onClick={() => handleBowlerChange(player.id)}
-                    className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    onClick={() => !isDisabled && handleBowlerChange(player.id)}
+                    disabled={isDisabled}
+                    className={`w-full p-3 text-left rounded-lg transition-colors ${isDisabled
+                      ? 'bg-gray-200 cursor-not-allowed opacity-60'
+                      : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
                   >
-                    <div className="font-medium">
-                      {player.name}
-                      {isJoker && <span className="ml-2">🃏</span>}
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">
+                        {player.name}
+                        {isJoker && <span className="ml-2">🃏</span>}
+                      </div>
+                      {status && (
+                        <span className="text-xs text-gray-500 italic">{status}</span>
+                      )}
                     </div>
                   </button>
                 );
               })}
-              {match.hasJoker && match.jokerName && (
-                <button
-                  onClick={() => handleBowlerChange('joker')}
-                  className="w-full p-3 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border-2 border-yellow-200"
-                >
-                  <div className="font-medium text-yellow-800">
-                    🃏 {match.jokerName} (Joker)
-                  </div>
-                </button>
-              )}
             </div>
             <button
               onClick={() => setIsBowlerModalOpen(false)}
@@ -884,9 +884,9 @@ const LiveScoringPage: React.FC = () => {
             >
               Cancel
             </button>
-                     </div>
-         </div>
-       )}
+          </div>
+        </div>
+      )}
 
       {/* Batsman Selection Modal */}
       {isBatsmanModalOpen && (
@@ -940,7 +940,7 @@ const LiveScoringPage: React.FC = () => {
                 <button
                   key={runs}
                   onClick={() => {
-                    handleExtra('wide', runs + 1); // +1 for the wide itself
+                    handleExtra('wide', runs); // Penalty handled in handleExtra
                     setIsWideModalOpen(false);
                   }}
                   className="py-4 text-lg font-bold bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg transition-colors"
@@ -969,7 +969,7 @@ const LiveScoringPage: React.FC = () => {
                 <button
                   key={runs}
                   onClick={() => {
-                    handleExtra('noball', runs + 1); // +1 for the no ball itself
+                    handleExtra('noball', runs); // Penalty handled in handleExtra
                     setIsNoBallModalOpen(false);
                   }}
                   className="py-4 text-lg font-bold bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors"
@@ -999,7 +999,7 @@ const LiveScoringPage: React.FC = () => {
                 Only one batsman remains. How would you like to continue?
               </p>
             </div>
-            
+
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => {
@@ -1013,7 +1013,7 @@ const LiveScoringPage: React.FC = () => {
                   <div className="text-sm text-green-100">Last batsman continues scoring</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => {
                   endInningsEarly();
@@ -1027,15 +1027,15 @@ const LiveScoringPage: React.FC = () => {
                 </div>
               </button>
             </div>
-            
+
             <div className="text-xs text-gray-500 text-center">
               Choose wisely - this decision cannot be undone!
             </div>
           </div>
         </div>
       )}
-      </div>
-    );
-  };
+    </div>
+  );
+};
 
 export default LiveScoringPage; 

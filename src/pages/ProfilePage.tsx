@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, LogOut, User, Mail, Trophy, History, Bell, HelpCircle } from 'lucide-react';
+import { Settings, LogOut, User, Mail, Trophy, History, Bell, HelpCircle, Users } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,6 +49,23 @@ const ProfilePage: React.FC = () => {
       {/* Profile Content */}
       <div className="max-w-lg mx-auto px-4 -mt-6">
         <div className="space-y-4">
+          {/* Player Roster Navigation */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+            <button
+              onClick={() => navigate('/player-roster')}
+              className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-9 h-9 bg-cricket-blue/10 rounded-xl flex items-center justify-center">
+                <Users size={18} className="text-cricket-blue" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-medium text-gray-900">Player Roster</h3>
+                <p className="text-sm text-gray-500">Manage your saved players</p>
+              </div>
+              <div className="text-gray-400">→</div>
+            </button>
+          </div>
+
           {/* Account Section */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
             <div className="p-4 border-b border-gray-100">
@@ -173,4 +190,4 @@ const ProfilePage: React.FC = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

@@ -17,6 +17,7 @@ const WinnerPage = lazy(() => import('./pages/WinnerPage'));
 const ScorecardPage = lazy(() => import('./pages/ScorecardPage'));
 const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const PlayerRosterPage = lazy(() => import('./pages/PlayerRosterPage'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -92,7 +93,7 @@ function App() {
             <Routes>
               {/* Root route - smart redirect */}
               <Route path="/" element={<RootRoute />} />
-              
+
               {/* Public routes */}
               <Route path="/landing" element={
                 <PublicRoute>
@@ -104,7 +105,7 @@ function App() {
                   <AuthPage />
                 </PublicRoute>
               } />
-              
+
               {/* Protected routes */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
@@ -159,6 +160,12 @@ function App() {
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/player-roster" element={
+                <ProtectedRoute>
+                  <PlayerRosterPage />
                 </ProtectedRoute>
               } />
             </Routes>

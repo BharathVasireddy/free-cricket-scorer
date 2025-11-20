@@ -22,7 +22,7 @@ const WinnerPage: React.FC = () => {
         setIsSaving(true);
         try {
           // Get userId from match data - it should be set when match was created
-          const userId = (match as any).userId;
+          const userId = match.userId;
           if (!userId) {
             throw new Error('No user ID found - match cannot be saved');
           }

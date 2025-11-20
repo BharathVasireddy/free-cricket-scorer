@@ -22,6 +22,7 @@ interface MatchStore extends MatchState {
   endInningsEarly: () => void;
   isLastManStanding: () => { isLastMan: boolean; remainingBatsmanId?: string } | null;
   checkAndAbandonMatch: () => boolean;
+  undoLastBall: () => void;
   resetMatch: () => void;
   setError: (error: string | null) => void;
   saveToFirebase: () => Promise<void>;
@@ -55,6 +56,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         ...matchData,
         id: crypto.randomUUID(),
         createdAt: new Date(),
+        userId: userId,
       };
 
       // Create first innings
@@ -438,8 +440,40 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       updatedInnings.totalBalls >= state.match.overs * 6 || // Overs completed
       (updatedInnings.target && updatedInnings.totalRuns >= updatedInnings.target); // Target achieved
 
+    // Calculate winner if match is ending
+    let winner = state.match.winner;
+    let winMargin = state.match.winMargin;
+
     if (shouldEndInnings) {
       updatedInnings.isCompleted = true;
+
+      // If match is completing (2nd innings ending), calculate winner
+      if (state.match.currentInning === 2) {
+        const firstInnings = state.match.innings[0];
+        const secondInnings = updatedInnings;
+
+        if (secondInnings.totalRuns > firstInnings.totalRuns) {
+          // Second batting team won
+          const winningTeam = state.match.teams.find(t => t.id === secondInnings.battingTeamId);
+          const totalPlayersAvailable = state.match.playersPerTeam + (state.match.hasJoker ? 1 : 0);
+          const maxPossibleWickets = state.match.isSingleSide
+            ? totalPlayersAvailable
+            : totalPlayersAvailable - 1;
+          const wicketsRemaining = maxPossibleWickets - secondInnings.totalWickets;
+          winner = winningTeam?.name || 'Unknown Team';
+          winMargin = `${wicketsRemaining} wickets`;
+        } else if (firstInnings.totalRuns > secondInnings.totalRuns) {
+          // First batting team won
+          const winningTeam = state.match.teams.find(t => t.id === firstInnings.battingTeamId);
+          const runMargin = firstInnings.totalRuns - secondInnings.totalRuns;
+          winner = winningTeam?.name || 'Unknown Team';
+          winMargin = `${runMargin} runs`;
+        } else {
+          // Match tied
+          winner = 'Draw';
+          winMargin = '';
+        }
+      }
     }
 
     set({
@@ -454,6 +488,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         ),
         status: shouldEndInnings && state.match.currentInning === 2 ? 'completed' : state.match.status,
         currentInning: shouldEndInnings && state.match.currentInning === 1 ? 2 : state.match.currentInning,
+        winner,
+        winMargin,
       },
     });
 
@@ -686,17 +722,51 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
   },
 
   changeBowler: (newBowlerId) => {
+    const state = get();
+    if (!state.currentInnings) return;
+
+    // Calculate the bowler's stats from all balls they've bowled in this innings
+    let bowlerStats = {
+      playerId: newBowlerId,
+      overs: 0,
+      balls: 0,
+      runs: 0,
+      wickets: 0,
+      economy: 0,
+      maidens: 0,
+    };
+
+    // Go through all overs and count balls bowled by this bowler
+    state.currentInnings.overs.forEach(over => {
+      if (over.bowlerId === newBowlerId) {
+        over.balls.forEach(ball => {
+          // Count legal balls (not wides or no-balls)
+          const isLegalBall = !ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball');
+          if (isLegalBall) {
+            bowlerStats.balls++;
+          }
+
+          // Add runs (including extras)
+          bowlerStats.runs += ball.runs + (ball.extras?.runs || 0);
+
+          // Count wickets
+          if (ball.wicket) {
+            bowlerStats.wickets++;
+          }
+        });
+      }
+    });
+
+    // Calculate overs and economy
+    bowlerStats.overs = Math.floor(bowlerStats.balls / 6);
+    bowlerStats.economy = bowlerStats.balls > 0
+      ? (bowlerStats.runs / bowlerStats.balls) * 6
+      : 0;
+
     set({
-      currentBowler: {
-        playerId: newBowlerId,
-        overs: 0,
-        balls: 0,
-        runs: 0,
-        wickets: 0,
-        economy: 0,
-        maidens: 0,
-      },
-      currentOver: null,
+      currentBowler: bowlerStats,
+      // Don't reset currentOver - preserve it so mid-over changes work correctly
+      // currentOver: null,
     });
   },
 
@@ -1134,32 +1204,130 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
   checkAndAbandonMatch: () => {
     const state = get();
-    if (!state.match || state.match.status !== 'active') return false;
+    if (!state.match || !state.currentInnings) return false;
 
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
-    const matchStartTime = new Date(state.match.createdAt);
+    const now = Date.now();
+    const lastSaveTime = state.lastSaveTime?.getTime() || now;
+    const timeSinceLastSave = now - lastSaveTime;
 
-    if (matchStartTime < oneHourAgo) {
-      // Match has been active for more than 1 hour - abandon it
-      const updatedMatch = {
-        ...state.match,
-        status: 'completed' as const,
-        winner: 'Match Abandoned',
-        winMargin: 'Time exceeded (1 hour limit)',
-      };
-
+    // If more than 30 minutes since last activity, mark as abandoned
+    if (timeSinceLastSave > 30 * 60 * 1000) {
       set({
-        match: updatedMatch,
-        error: 'Match abandoned due to inactivity (1 hour limit)',
+        match: {
+          ...state.match,
+          status: 'completed',
+          winner: 'Match Abandoned',
+          winMargin: '',
+        },
       });
-
-      // Save the abandoned status to Firebase
-      get().saveToFirebase();
-
-      return true; // Match was abandoned
+      return true;
     }
 
-    return false; // Match is still valid
+    return false;
+  },
+
+  undoLastBall: () => {
+    const state = get();
+    if (!state.match || !state.currentInnings) return;
+
+    // Get the current over
+    const currentOver = state.currentInnings.overs[state.currentInnings.overs.length - 1];
+    if (!currentOver || currentOver.balls.length === 0) {
+      console.log('No balls to undo');
+      return;
+    }
+
+    // Get the last ball
+    const lastBall = currentOver.balls[currentOver.balls.length - 1];
+
+    // Remove the last ball from the over
+    const updatedBalls = currentOver.balls.slice(0, -1);
+    const updatedOver: Over = {
+      ...currentOver,
+      balls: updatedBalls,
+      runs: currentOver.runs - lastBall.runs - (lastBall.extras?.runs || 0),
+      wickets: currentOver.wickets - (lastBall.wicket ? 1 : 0),
+      completed: false,
+    };
+
+    // Update innings totals
+    const isLegalBall = !lastBall.extras || (lastBall.extras.type !== 'wide' && lastBall.extras.type !== 'noball');
+    const updatedInnings: Innings = {
+      ...state.currentInnings,
+      overs: state.currentInnings.overs.map(o =>
+        o.number === updatedOver.number ? updatedOver : o
+      ),
+      totalRuns: state.currentInnings.totalRuns - lastBall.runs - (lastBall.extras?.runs || 0),
+      totalWickets: state.currentInnings.totalWickets - (lastBall.wicket ? 1 : 0),
+      totalBalls: state.currentInnings.totalBalls - (isLegalBall ? 1 : 0),
+      isCompleted: false,
+    };
+
+    // Recalculate batsman stats
+    let updatedBatsmen = state.currentBatsmen;
+    if (lastBall.batsmanId) {
+      if (state.match.isSingleSide) {
+        const batsman = state.currentBatsmen as BatsmanStats;
+        if (batsman.playerId === lastBall.batsmanId) {
+          updatedBatsmen = {
+            ...batsman,
+            runs: batsman.runs - lastBall.runs,
+            balls: batsman.balls - (isLegalBall ? 1 : 0),
+            fours: batsman.fours - (lastBall.runs === 4 ? 1 : 0),
+            sixes: batsman.sixes - (lastBall.runs === 6 ? 1 : 0),
+            strikeRate: (batsman.balls - (isLegalBall ? 1 : 0)) > 0
+              ? ((batsman.runs - lastBall.runs) / (batsman.balls - (isLegalBall ? 1 : 0))) * 100
+              : 0,
+            isOut: false,
+          };
+        }
+      } else {
+        updatedBatsmen = (state.currentBatsmen as [BatsmanStats, BatsmanStats]).map(batsman => {
+          if (batsman.playerId === lastBall.batsmanId) {
+            return {
+              ...batsman,
+              runs: batsman.runs - lastBall.runs,
+              balls: batsman.balls - (isLegalBall ? 1 : 0),
+              fours: batsman.fours - (lastBall.runs === 4 ? 1 : 0),
+              sixes: batsman.sixes - (lastBall.runs === 6 ? 1 : 0),
+              strikeRate: (batsman.balls - (isLegalBall ? 1 : 0)) > 0
+                ? ((batsman.runs - lastBall.runs) / (batsman.balls - (isLegalBall ? 1 : 0))) * 100
+                : 0,
+              isOut: false,
+            };
+          }
+          return batsman;
+        }) as [BatsmanStats, BatsmanStats];
+      }
+    }
+
+    // Recalculate bowler stats
+    const updatedBowler = {
+      ...state.currentBowler!,
+      balls: state.currentBowler!.balls - (isLegalBall ? 1 : 0),
+      runs: state.currentBowler!.runs - lastBall.runs - (lastBall.extras?.runs || 0),
+      wickets: state.currentBowler!.wickets - (lastBall.wicket ? 1 : 0),
+      overs: Math.floor((state.currentBowler!.balls - (isLegalBall ? 1 : 0)) / 6),
+      economy: (state.currentBowler!.balls - (isLegalBall ? 1 : 0)) > 0
+        ? ((state.currentBowler!.runs - lastBall.runs - (lastBall.extras?.runs || 0)) / (state.currentBowler!.balls - (isLegalBall ? 1 : 0))) * 6
+        : 0,
+    };
+
+    set({
+      currentInnings: updatedInnings,
+      currentOver: updatedBalls.length > 0 ? updatedOver : null,
+      currentBatsmen: updatedBatsmen,
+      currentBowler: updatedBowler,
+      match: {
+        ...state.match,
+        innings: state.match.innings.map(i =>
+          i.number === updatedInnings.number ? updatedInnings : i
+        ),
+        status: 'active',
+      },
+    });
+
+    console.log('✅ Last ball undone');
   },
 
   saveToFirebase: async () => {

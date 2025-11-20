@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
 import { useAuth } from '../contexts/AuthContext';
-import type { Team, Player } from '../types';
+import type { Team, Player, SavedPlayer } from '../types';
+import { getUserRoster } from '../lib/playerRosterService';
+import PlayerSelectionModal from '../components/PlayerSelectionModal';
+import { Users } from 'lucide-react';
 
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,8 +30,65 @@ const MatchSetupPage: React.FC = () => {
   const [playersPerTeam, setPlayersPerTeam] = useState<number | ''>('');
   const [hasJoker, setHasJoker] = useState<boolean>(false);
   const [jokerName, setJokerName] = useState<string>('');
-  const [isSingleSide, setIsSingleSide] = useState<boolean>(false);
+  const [isSingleSide, setIsSingleSide] = useState<boolean>(true);
+  const [wideRunPenalty, setWideRunPenalty] = useState<boolean>(false);
+  const [noBallRunPenalty, setNoBallRunPenalty] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<'basic' | 'teams'>('basic');
+
+  // Roster state
+  const [savedPlayers, setSavedPlayers] = useState<SavedPlayer[]>([]);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
+  const [activeTeamForRoster, setActiveTeamForRoster] = useState<number | null>(null);
+
+  // Fetch roster on mount
+  React.useEffect(() => {
+    const fetchRoster = async () => {
+      if (currentUser?.uid) {
+        try {
+          const roster = await getUserRoster(currentUser.uid);
+          if (roster) {
+            setSavedPlayers(roster.players);
+          }
+        } catch (error) {
+          console.error('Failed to fetch roster:', error);
+        }
+      }
+    };
+    fetchRoster();
+  }, [currentUser]);
+
+  const openRosterModal = (teamIndex: number) => {
+    setActiveTeamForRoster(teamIndex);
+    setIsRosterModalOpen(true);
+  };
+
+  const handleRosterSelection = (selectedPlayers: SavedPlayer[]) => {
+    if (activeTeamForRoster === null) return;
+
+    setTeams(prev => prev.map((team, tIndex) => {
+      if (tIndex === activeTeamForRoster) {
+        const updatedPlayers = [...team.players];
+        let selectedIndex = 0;
+
+        // Fill empty slots first
+        for (let i = 0; i < updatedPlayers.length; i++) {
+          if (selectedIndex >= selectedPlayers.length) break;
+
+          if (!updatedPlayers[i].name.trim()) {
+            updatedPlayers[i] = {
+              ...updatedPlayers[i],
+              name: selectedPlayers[selectedIndex].name.toUpperCase(),
+              phoneNumber: selectedPlayers[selectedIndex].phoneNumber
+            };
+            selectedIndex++;
+          }
+        }
+
+        return { ...team, players: updatedPlayers };
+      }
+      return team;
+    }));
+  };
 
   // Form validation
   const isBasicValid = () => {
@@ -110,8 +170,13 @@ const MatchSetupPage: React.FC = () => {
     }
   };
 
+  const [isCreating, setIsCreating] = useState(false);
+
   const handleStartMatch = async () => {
     if (isTeamsValid() && typeof overs === 'number' && typeof playersPerTeam === 'number') {
+      if (isCreating) return;
+      setIsCreating(true);
+
       try {
         // Ensure we have a valid user ID
         const userId = currentUser?.uid;
@@ -128,6 +193,8 @@ const MatchSetupPage: React.FC = () => {
           hasJoker,
           jokerName: hasJoker ? jokerName : undefined,
           isSingleSide,
+          wideRunPenalty,
+          noBallRunPenalty,
           currentInning: 1,
           innings: [],
           status: 'active',
@@ -135,6 +202,7 @@ const MatchSetupPage: React.FC = () => {
         navigate('/toss');
       } catch (error) {
         console.error('Failed to create match:', error);
+        setIsCreating(false);
         // Handle error - maybe show a toast or alert
       }
     }
@@ -320,6 +388,64 @@ const MatchSetupPage: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Wide Run Penalty */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Wide Ball Penalty
+                </label>
+                <button
+                  onClick={() => setWideRunPenalty(!wideRunPenalty)}
+                  className={`w-full p-2.5 rounded-lg border-2 transition-all ${wideRunPenalty
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <div className="font-bold text-sm flex items-center">
+                        <span className="mr-1.5">🎯</span>
+                        Wide = +1 Run Penalty
+                      </div>
+                      <div className="text-xs mt-0.5 text-gray-600">
+                        {wideRunPenalty ? 'Enabled (standard rules)' : 'Disabled (no penalty)'}
+                      </div>
+                    </div>
+                    <div className="text-lg">
+                      {wideRunPenalty ? '✓' : '○'}
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* No-Ball Run Penalty */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  No-Ball Penalty
+                </label>
+                <button
+                  onClick={() => setNoBallRunPenalty(!noBallRunPenalty)}
+                  className={`w-full p-2.5 rounded-lg border-2 transition-all ${noBallRunPenalty
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <div className="font-bold text-sm flex items-center">
+                        <span className="mr-1.5">⚡</span>
+                        No-Ball = +1 Run Penalty
+                      </div>
+                      <div className="text-xs mt-0.5 text-gray-600">
+                        {noBallRunPenalty ? 'Enabled (standard rules)' : 'Disabled (no penalty)'}
+                      </div>
+                    </div>
+                    <div className="text-lg">
+                      {noBallRunPenalty ? '✓' : '○'}
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Continue Button */}
@@ -401,10 +527,17 @@ const MatchSetupPage: React.FC = () => {
               <div key={team.id} className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
                 {/* Team Name Section - Much More Prominent */}
                 <div className={`p-6 ${teamIndex === 0 ? 'bg-cricket-blue' : 'bg-green-600'}`}>
-                  <div className="text-center mb-4">
+                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-white text-sm font-medium opacity-90">
                       {teamIndex === 0 ? '🏏 TEAM A' : '🏏 TEAM B'}
                     </h3>
+                    <button
+                      onClick={() => openRosterModal(teamIndex)}
+                      className="flex items-center space-x-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-white text-xs font-medium transition-colors backdrop-blur-sm"
+                    >
+                      <Users size={14} />
+                      <span>Select from Roster</span>
+                    </button>
                   </div>
                   <div className="relative">
                     <input
@@ -445,19 +578,41 @@ const MatchSetupPage: React.FC = () => {
         <div className="p-4 bg-gray-50 border-t">
           <button
             onClick={handleStartMatch}
-            disabled={!isTeamsValid()}
-            className={isTeamsValid() ? 'btn-success w-full py-4 text-lg' : 'btn-secondary w-full py-4 text-lg'}
+            disabled={!isTeamsValid() || isCreating}
+            className={isTeamsValid() && !isCreating ? 'btn-success w-full py-4 text-lg' : 'btn-secondary w-full py-4 text-lg'}
           >
-            🏏 Start Match
+            {isCreating ? (
+              <span className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Creating Match...</span>
+              </span>
+            ) : (
+              '🏏 Start Match'
+            )}
           </button>
 
-          {!isTeamsValid() && (
+          {!isTeamsValid() && !isCreating && (
             <p className="text-center text-sm text-gray-500 mt-2">
               Please fill all team names and player names
             </p>
           )}
         </div>
       </div>
+
+      <PlayerSelectionModal
+        isOpen={isRosterModalOpen}
+        onClose={() => setIsRosterModalOpen(false)}
+        players={savedPlayers.filter(sp => {
+          // Filter out players that are already in ANY team
+          const isUsed = teams.some(team =>
+            team.players.some(p => p.name.trim().toUpperCase() === sp.name.toUpperCase())
+          );
+          return !isUsed;
+        })}
+        onSelect={handleRosterSelection}
+        title={`Select Players for ${activeTeamForRoster === 0 ? 'Team A' : 'Team B'}`}
+        maxSelection={playersPerTeam ? (playersPerTeam as number) : 11}
+      />
     </div>
   );
 };

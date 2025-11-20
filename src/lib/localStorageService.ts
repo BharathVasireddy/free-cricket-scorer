@@ -22,7 +22,7 @@ const convertToFirebaseMatch = (match: Match, userId?: string, isGuest: boolean 
   return {
     ...match,
     matchCode: (match as any).matchCode || generateMatchCode(),
-    userId: userId || null,
+    userId: userId || undefined,
     isGuest,
     isPublic: isGuest,
     createdAt: new Date(),
@@ -36,30 +36,30 @@ export const localStorageService = {
   async saveMatch(matchData: Match, userId?: string, isGuest: boolean = false): Promise<string> {
     try {
       console.log('💾 Saving match locally...', { userId, isGuest });
-      
+
       const matchCode = generateMatchCode();
       const firebaseMatch = convertToFirebaseMatch(matchData, userId, isGuest);
       firebaseMatch.matchCode = matchCode;
-      
+
       // Save to general matches
       const allMatches = this.getAllMatches();
       allMatches.push({ ...firebaseMatch, id: Date.now().toString() });
       localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));
-      
+
       // Save to user-specific matches if logged in
       if (userId && !isGuest) {
         const userMatches = this.getUserMatches(userId);
         userMatches.push({ ...firebaseMatch, id: Date.now().toString() });
         localStorage.setItem(`${LOCAL_STORAGE_KEYS.USER_MATCHES}_${userId}`, JSON.stringify(userMatches));
       }
-      
+
       // Save to community matches if public
       if (isGuest || firebaseMatch.isPublic) {
         const communityMatches = this.getCommunityMatches();
         communityMatches.push({ ...firebaseMatch, id: Date.now().toString() });
         localStorage.setItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES, JSON.stringify(communityMatches));
       }
-      
+
       console.log('✅ Match saved locally with code:', matchCode);
       return matchCode;
     } catch (error) {
@@ -124,7 +124,7 @@ export const localStorageService = {
     try {
       const allMatches = this.getAllMatches();
       const index = allMatches.findIndex(m => m.id === matchId);
-      
+
       if (index !== -1) {
         allMatches[index] = { ...allMatches[index], ...matchData, updatedAt: new Date() };
         localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));

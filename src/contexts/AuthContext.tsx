@@ -40,33 +40,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {      throw error;
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      throw error;
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, displayName: string) => {
-    setIsLoading(true);
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName });
-    } catch (error) {      throw error;
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      throw error;
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
       await signOut(auth);
-    } catch (error) {      throw error;
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      throw error;
     }
   };
 

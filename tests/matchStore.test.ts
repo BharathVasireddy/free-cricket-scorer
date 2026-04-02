@@ -440,4 +440,182 @@ describe('matchStore edge cases', () => {
       completed: false,
     });
   });
+
+  it('continues the same over and preserves per-bowler stats when changing bowler mid-over', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    scoreLegalBall(1);
+    scoreLegalBall(2);
+
+    useMatchStore.getState().changeBowler('team2_player_2');
+
+    let state = useMatchStore.getState();
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      bowlerId: 'team2_player_2',
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(2);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_2',
+      balls: 0,
+      runs: 0,
+      wickets: 0,
+    });
+
+    scoreLegalBall(0);
+    scoreLegalBall(4);
+    scoreLegalBall(0);
+    scoreLegalBall(1);
+
+    state = useMatchStore.getState();
+    expect(state.currentInnings?.totalBalls).toBe(6);
+    expect(state.currentOver).toBeNull();
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_2',
+      balls: 4,
+      runs: 5,
+      wickets: 0,
+    });
+    expect(state.currentInnings?.overs[0]).toMatchObject({
+      number: 1,
+      bowlerId: 'team2_player_2',
+      completed: true,
+    });
+    expect(state.currentInnings?.overs[0].balls.map(ball => ball.bowlerId)).toEqual([
+      'team2_player_1',
+      'team2_player_1',
+      'team2_player_2',
+      'team2_player_2',
+      'team2_player_2',
+      'team2_player_2',
+    ]);
+
+    useMatchStore.getState().changeBowler('team2_player_1');
+
+    state = useMatchStore.getState();
+    expect(state.currentOver).toMatchObject({
+      number: 2,
+      bowlerId: 'team2_player_1',
+      balls: [],
+      completed: false,
+    });
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      balls: 2,
+      runs: 3,
+      wickets: 0,
+    });
+  });
+
+  it('switches back to the previous bowler if undo happens before the new bowler bowls', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    scoreLegalBall(1);
+    scoreLegalBall(2);
+    useMatchStore.getState().changeBowler('team2_player_2');
+
+    useMatchStore.getState().undoLastBall();
+
+    const state = useMatchStore.getState();
+    expect(state.currentInnings?.totalBalls).toBe(1);
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      bowlerId: 'team2_player_1',
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(1);
+    expect(state.currentOver?.balls[0].bowlerId).toBe('team2_player_1');
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      balls: 1,
+      runs: 1,
+      wickets: 0,
+    });
+  });
+
+  it('switches the active bowler back when undo crosses a mid-over bowler change', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    scoreLegalBall(1);
+    scoreLegalBall(2);
+    useMatchStore.getState().changeBowler('team2_player_2');
+    scoreLegalBall(0);
+    scoreLegalBall(4);
+
+    useMatchStore.getState().undoLastBall();
+    useMatchStore.getState().undoLastBall();
+
+    const state = useMatchStore.getState();
+    expect(state.currentInnings?.totalBalls).toBe(2);
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      bowlerId: 'team2_player_1',
+      completed: false,
+    });
+    expect(state.currentOver?.balls.map(ball => ball.bowlerId)).toEqual([
+      'team2_player_1',
+      'team2_player_1',
+    ]);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      balls: 2,
+      runs: 3,
+      wickets: 0,
+    });
+  });
+
+  it('can undo the previous over even after selecting the next over bowler', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    for (let ball = 0; ball < 6; ball += 1) {
+      scoreLegalBall(1);
+    }
+    useMatchStore.getState().changeBowler('team2_player_2');
+
+    useMatchStore.getState().undoLastBall();
+
+    const state = useMatchStore.getState();
+    expect(state.currentInnings?.totalBalls).toBe(5);
+    expect(state.currentInnings?.overs).toHaveLength(1);
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      bowlerId: 'team2_player_1',
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(5);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      balls: 5,
+      runs: 5,
+      wickets: 0,
+    });
+  });
+
+  it('keeps the same bowler selected when undo removes the only ball of a new over', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    for (let ball = 0; ball < 6; ball += 1) {
+      scoreLegalBall(0);
+    }
+    useMatchStore.getState().changeBowler('team2_player_2');
+    scoreLegalBall(2);
+
+    useMatchStore.getState().undoLastBall();
+
+    const state = useMatchStore.getState();
+    expect(state.currentInnings?.totalBalls).toBe(6);
+    expect(state.currentOver).toMatchObject({
+      number: 2,
+      bowlerId: 'team2_player_2',
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(0);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_2',
+      balls: 0,
+      runs: 0,
+      wickets: 0,
+    });
+  });
 });

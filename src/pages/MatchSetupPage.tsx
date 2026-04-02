@@ -7,6 +7,10 @@ import { getUserRoster } from '../lib/playerRosterService';
 import PlayerSelectionModal from '../components/PlayerSelectionModal';
 import { CheckCircle2, Circle, Users } from 'lucide-react';
 
+type RosterTarget =
+  | { kind: 'team'; teamIndex: number }
+  | { kind: 'joker' };
+
 interface SelectionIndicatorProps {
   isSelected: boolean;
   selectedClassName?: string;
@@ -67,7 +71,7 @@ const MatchSetupPage: React.FC = () => {
   // Roster state
   const [savedPlayers, setSavedPlayers] = useState<SavedPlayer[]>([]);
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
-  const [activeTeamForRoster, setActiveTeamForRoster] = useState<number | null>(null);
+  const [rosterTarget, setRosterTarget] = useState<RosterTarget | null>(null);
 
   // Fetch roster on mount
   React.useEffect(() => {
@@ -87,15 +91,25 @@ const MatchSetupPage: React.FC = () => {
   }, [currentUser]);
 
   const openRosterModal = (teamIndex: number) => {
-    setActiveTeamForRoster(teamIndex);
+    setRosterTarget({ kind: 'team', teamIndex });
+    setIsRosterModalOpen(true);
+  };
+
+  const openJokerRosterModal = () => {
+    setRosterTarget({ kind: 'joker' });
     setIsRosterModalOpen(true);
   };
 
   const handleRosterSelection = (selectedPlayers: SavedPlayer[]) => {
-    if (activeTeamForRoster === null) return;
+    if (!rosterTarget || selectedPlayers.length === 0) return;
+
+    if (rosterTarget.kind === 'joker') {
+      setJokerName(selectedPlayers[0].name.toUpperCase());
+      return;
+    }
 
     setTeams(prev => prev.map((team, tIndex) => {
-      if (tIndex === activeTeamForRoster) {
+      if (tIndex === rosterTarget.teamIndex) {
         const updatedPlayers = [...team.players];
         let selectedIndex = 0;
 
@@ -237,40 +251,71 @@ const MatchSetupPage: React.FC = () => {
     }
   };
 
+  const availableRosterPlayers = savedPlayers.filter(sp => {
+    const isUsedInTeams = teams.some(team =>
+      team.players.some(p => p.name.trim().toUpperCase() === sp.name.toUpperCase())
+    );
+    const isSelectedJoker = hasJoker && jokerName.trim() !== '' && sp.name.toUpperCase() === jokerName.trim().toUpperCase();
+
+    if (rosterTarget?.kind === 'joker') {
+      return !isUsedInTeams;
+    }
+
+    return !isUsedInTeams && !isSelectedJoker;
+  });
+
+  const rosterModal = (
+    <PlayerSelectionModal
+      isOpen={isRosterModalOpen}
+      onClose={() => {
+        setIsRosterModalOpen(false);
+        setRosterTarget(null);
+      }}
+      players={availableRosterPlayers}
+      onSelect={handleRosterSelection}
+      title={rosterTarget?.kind === 'joker'
+        ? 'Select Joker from Roster'
+        : `Select Players for ${rosterTarget?.teamIndex === 0 ? 'Team A' : 'Team B'}`}
+      maxSelection={rosterTarget?.kind === 'joker' ? 1 : (playersPerTeam ? (playersPerTeam as number) : 11)}
+      confirmLabel={rosterTarget?.kind === 'joker' ? 'Use as Joker' : 'Add Selected Players'}
+    />
+  );
+
   if (currentStep === 'basic') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col pb-safe">
-        {/* Header */}
-        <div className="p-3 flex items-center justify-between flex-shrink-0">
-          <button
-            onClick={() => navigate('/')}
-            className="text-white/80 hover:text-white text-sm font-medium"
-          >
-            ← Back
-          </button>
-          <h1 className="text-white text-lg font-bold">Match Setup</h1>
-          <div className="w-12"></div>
-        </div>
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 flex flex-col pb-safe">
+          {/* Header */}
+          <div className="p-3 flex items-center justify-between flex-shrink-0">
+            <button
+              onClick={() => navigate('/')}
+              className="text-white/80 hover:text-white text-sm font-medium"
+            >
+              ← Back
+            </button>
+            <h1 className="text-white text-lg font-bold">Match Setup</h1>
+            <div className="w-12"></div>
+          </div>
 
-        {/* Progress */}
-        <div className="px-4 pb-3">
-          <div className="flex items-center justify-center space-x-2">
-            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-              <span className="text-cricket-blue font-bold text-xs">1</span>
+          {/* Progress */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <span className="text-cricket-blue font-bold text-xs">1</span>
+              </div>
+              <div className="w-6 h-0.5 bg-white/30"></div>
+              <div className="w-6 h-6 bg-white/30 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">2</span>
+              </div>
             </div>
-            <div className="w-6 h-0.5 bg-white/30"></div>
-            <div className="w-6 h-6 bg-white/30 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xs">2</span>
+            <div className="text-center mt-1">
+              <span className="text-white/80 text-xs">Match Settings</span>
             </div>
           </div>
-          <div className="text-center mt-1">
-            <span className="text-white/80 text-xs">Match Settings</span>
-          </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="flex-1 bg-white rounded-t-3xl px-4 py-4 overflow-y-auto">
-          <div className="max-w-md mx-auto space-y-4">
+          {/* Main Content */}
+          <div className="flex-1 bg-white rounded-t-3xl px-4 py-4 overflow-y-auto">
+            <div className="max-w-md mx-auto space-y-4">
             {/* Match Format */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-100">
               <h2 className="text-base font-bold text-gray-900 mb-3 text-center">Match Format</h2>
@@ -407,24 +452,45 @@ const MatchSetupPage: React.FC = () => {
                     )}
 
                     {hasJoker && (
-                      <div className="mt-3 flex items-center gap-2.5">
-                        <input
-                          type="text"
-                          value={jokerName}
-                          onChange={(e) => {
-                            const uppercaseName = e.target.value.toUpperCase();
-                            setJokerName(uppercaseName);
-                          }}
-                          className="input-field h-11 flex-1 border-yellow-300 bg-white/90 focus:border-yellow-400 focus:ring-yellow-200"
-                          placeholder="Enter joker player name"
-                        />
+                      <div className="mt-3 space-y-2.5">
                         <button
                           type="button"
-                          onClick={() => setHasJoker(false)}
-                          className="h-11 rounded-xl border border-gray-300 px-3 text-gray-600 transition-colors hover:bg-gray-50"
+                          onClick={openJokerRosterModal}
+                          disabled={savedPlayers.length === 0}
+                          className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${savedPlayers.length === 0
+                            ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                            : 'border-yellow-300 bg-white/90 text-yellow-800 hover:bg-yellow-50'
+                            }`}
                         >
-                          ✕
+                          <Users size={16} />
+                          <span>{jokerName ? 'Change Joker from Roster' : 'Select Joker from Roster'}</span>
                         </button>
+
+                        {jokerName ? (
+                          <div className="flex items-center justify-between rounded-xl border border-yellow-200 bg-white/90 px-3 py-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-yellow-800">🃏 {jokerName}</div>
+                              <div className="mt-0.5 text-xs text-yellow-800/80">Selected from your saved roster</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setJokerName('')}
+                              className="ml-3 h-9 rounded-lg border border-gray-300 px-3 text-gray-600 transition-colors hover:bg-gray-50"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="px-1 text-xs text-yellow-900/70">
+                            Choose the joker only from your saved player roster.
+                          </p>
+                        )}
+
+                        {savedPlayers.length === 0 && (
+                          <p className="px-1 text-xs text-gray-500">
+                            Add the joker to your player roster first, then come back and select them here.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -482,17 +548,19 @@ const MatchSetupPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Continue Button */}
-            <button
-              onClick={proceedToTeams}
-              disabled={!isBasicValid()}
-              className={`${isBasicValid() ? 'btn-primary' : 'btn-secondary'} w-full h-11 text-base`}
-            >
-              Continue to Teams →
-            </button>
+              {/* Continue Button */}
+              <button
+                onClick={proceedToTeams}
+                disabled={!isBasicValid()}
+                className={`${isBasicValid() ? 'btn-primary' : 'btn-secondary'} w-full h-11 text-base`}
+              >
+                Continue to Teams →
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+        {rosterModal}
+      </>
     );
   }
 
@@ -633,20 +701,7 @@ const MatchSetupPage: React.FC = () => {
         </div>
       </div>
 
-      <PlayerSelectionModal
-        isOpen={isRosterModalOpen}
-        onClose={() => setIsRosterModalOpen(false)}
-        players={savedPlayers.filter(sp => {
-          // Filter out players that are already in ANY team
-          const isUsed = teams.some(team =>
-            team.players.some(p => p.name.trim().toUpperCase() === sp.name.toUpperCase())
-          );
-          return !isUsed;
-        })}
-        onSelect={handleRosterSelection}
-        title={`Select Players for ${activeTeamForRoster === 0 ? 'Team A' : 'Team B'}`}
-        maxSelection={playersPerTeam ? (playersPerTeam as number) : 11}
-      />
+      {rosterModal}
     </div>
   );
 };

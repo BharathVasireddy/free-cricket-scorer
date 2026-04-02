@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
+import type { Player } from '../types';
+
+type SelectablePlayer = Player & {
+  isJoker?: boolean;
+};
 
 const SecondInningsPlayersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +26,46 @@ const SecondInningsPlayersPage: React.FC = () => {
   const bowlingTeam = match.teams.find(team => team.id === firstInnings.battingTeamId);
 
   const target = firstInnings.totalRuns + 1;
+  const shouldIncludeJoker = Boolean(
+    battingTeam &&
+    bowlingTeam &&
+    match.hasJoker &&
+    match.jokerName &&
+    !battingTeam.players.some(player => player.name.trim().toUpperCase() === match.jokerName?.trim().toUpperCase()) &&
+    !bowlingTeam.players.some(player => player.name.trim().toUpperCase() === match.jokerName?.trim().toUpperCase())
+  );
+  const battingJokerId = battingTeam ? `joker-${battingTeam.id}` : 'joker-batting';
+  const bowlingJokerId = bowlingTeam ? `joker-${bowlingTeam.id}` : 'joker-bowling';
+  const isJokerSelectedForBatting = selectedBatsmen.includes(battingJokerId);
+  const isJokerSelectedForBowling = selectedBowler === bowlingJokerId;
+
+  const battingOptions: SelectablePlayer[] = battingTeam
+    ? shouldIncludeJoker && !isJokerSelectedForBowling
+      ? [
+        ...battingTeam.players,
+        {
+          id: battingJokerId,
+          name: match.jokerName!,
+          role: 'allrounder',
+          isJoker: true,
+        },
+      ]
+      : battingTeam.players
+    : [];
+
+  const bowlingOptions: SelectablePlayer[] = bowlingTeam
+    ? shouldIncludeJoker && !isJokerSelectedForBatting
+      ? [
+        ...bowlingTeam.players,
+        {
+          id: bowlingJokerId,
+          name: match.jokerName!,
+          role: 'allrounder',
+          isJoker: true,
+        },
+      ]
+      : bowlingTeam.players
+    : [];
 
   const handleBatsmanToggle = (playerId: string) => {
     if (selectedBatsmen.includes(playerId)) {
@@ -100,9 +145,9 @@ const SecondInningsPlayersPage: React.FC = () => {
             </div>
 
             <div className="grid gap-3">
-              {battingTeam?.players.map((player) => {
+              {battingOptions.map((player) => {
                 const isSelected = selectedBatsmen.includes(player.id);
-                const isJoker = match.hasJoker && player.name === match.jokerName;
+                const isJoker = Boolean(player.isJoker);
                 const canSelect = isSelected || selectedBatsmen.length < (match.isSingleSide ? 1 : 2);
                 
                 return (
@@ -144,7 +189,7 @@ const SecondInningsPlayersPage: React.FC = () => {
                 </div>
                 <div className="text-green-700 mt-1">
                   {selectedBatsmen.map(id => 
-                    battingTeam?.players.find(p => p.id === id)?.name
+                    battingOptions.find(p => p.id === id)?.name
                   ).join(', ')}
                 </div>
               </div>
@@ -163,9 +208,9 @@ const SecondInningsPlayersPage: React.FC = () => {
             </div>
 
             <div className="grid gap-3">
-              {bowlingTeam?.players.map((player) => {
+              {bowlingOptions.map((player) => {
                 const isSelected = selectedBowler === player.id;
-                const isJoker = match.hasJoker && player.name === match.jokerName;
+                const isJoker = Boolean(player.isJoker);
                 
                 return (
                   <button
@@ -202,7 +247,7 @@ const SecondInningsPlayersPage: React.FC = () => {
                   Selected Bowler:
                 </div>
                 <div className="text-blue-700 mt-1">
-                  {bowlingTeam?.players.find(p => p.id === selectedBowler)?.name}
+                  {bowlingOptions.find(p => p.id === selectedBowler)?.name}
                 </div>
               </div>
             )}

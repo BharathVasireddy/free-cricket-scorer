@@ -30,21 +30,18 @@ const TossPage: React.FC = () => {
 
   const handleCoinFlip = () => {
     setIsFlipping(true);
-    
-    // Animate coin sides during flip
+
     const flipInterval = setInterval(() => {
       setCoinSide(prev => prev === 'heads' ? 'tails' : 'heads');
     }, 100);
-    
-    // Stop after 3 seconds with final result
+
     setTimeout(() => {
       clearInterval(flipInterval);
       const result = Math.random() < 0.5 ? 'heads' : 'tails';
       setCoinSide(result);
       setTossResult(result);
       setIsFlipping(false);
-      
-      // Show result after a brief pause
+
       setTimeout(() => {
         setShowResult(true);
       }, 500);
@@ -61,7 +58,6 @@ const TossPage: React.FC = () => {
 
   const handleContinue = () => {
     if (selectedTeam && tossChoice) {
-      // Set the toss winner and their choice in the store
       setTossWinner(selectedTeam, tossChoice);
       navigate('/players');
     }
@@ -72,7 +68,6 @@ const TossPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-cricket-blue to-blue-700 pb-safe">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Match Toss</h1>
           <p className="text-blue-100">
@@ -86,21 +81,22 @@ const TossPage: React.FC = () => {
         </div>
 
         <div className="max-w-md mx-auto">
-          {/* Step 1: Coin Flip */}
           {!showResult && (
             <div className="bg-white rounded-xl p-6 text-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Ready for the toss?
               </h2>
-              
+
               <div className="mb-6">
                 <div className="coin-container perspective-1000">
-                  <div className={`coin w-32 h-32 mx-auto relative transition-all duration-500 ${isFlipping ? 'flipping' : ''}`}
-                       style={{ 
-                         transform: !isFlipping && tossResult ? 
-                           (tossResult === 'heads' ? 'rotateY(0deg)' : 'rotateY(180deg)') : 
-                           '' 
-                       }}>
+                  <div
+                    className={`coin w-32 h-32 mx-auto relative transition-all duration-500 ${isFlipping ? 'flipping' : ''}`}
+                    style={{
+                      transform: !isFlipping && tossResult
+                        ? (tossResult === 'heads' ? 'rotateY(0deg)' : 'rotateY(180deg)')
+                        : '',
+                    }}
+                  >
                     <div className="coin-side coin-heads">
                       <div className="w-full h-full rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 border-4 border-yellow-600 flex items-center justify-center text-4xl font-bold shadow-2xl">
                         🏏
@@ -115,8 +111,7 @@ const TossPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
-                {/* Flip indicator */}
+
                 <div className="text-center">
                   <div className={`text-sm font-medium transition-opacity duration-300 ${
                     isFlipping ? 'opacity-100 text-cricket-blue' : 'opacity-0'
@@ -130,8 +125,8 @@ const TossPage: React.FC = () => {
                 onClick={handleCoinFlip}
                 disabled={isFlipping}
                 className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
-                  isFlipping 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed scale-100' 
+                  isFlipping
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed scale-100'
                     : 'bg-gradient-to-r from-cricket-blue to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg'
                 }`}
               >
@@ -150,7 +145,6 @@ const TossPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 2: Toss Result & Team Selection */}
           {showResult && !selectedTeam && (
             <div className="bg-white rounded-xl p-6 mb-6">
               <div className="text-center mb-6">
@@ -177,7 +171,6 @@ const TossPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 3: Choice Selection */}
           {selectedTeam && !tossChoice && (
             <div className="bg-white rounded-xl p-6 mb-6">
               <div className="text-center mb-6">
@@ -206,20 +199,19 @@ const TossPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 4: Summary & Continue */}
           {selectedTeam && tossChoice && (
             <div className="bg-white rounded-xl p-6 mb-6">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Toss Complete! 🎉
                 </h2>
-                
+
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <div className="text-sm text-gray-600 mb-2">Toss Result:</div>
                   <div className="font-semibold text-cricket-blue mb-3">
                     {selectedTeamData?.name} won and chose to {tossChoice} first
                   </div>
-                  
+
                   <div className="text-sm text-gray-700">
                     <div className="mb-1">
                       <span className="font-medium">
@@ -244,7 +236,6 @@ const TossPage: React.FC = () => {
             </div>
           )}
 
-          {/* Back Button */}
           <div className="text-center">
             <button
               onClick={() => navigate(-1)}
@@ -259,4 +250,4 @@ const TossPage: React.FC = () => {
   );
 };
 
-export default TossPage; 
+export default TossPage;

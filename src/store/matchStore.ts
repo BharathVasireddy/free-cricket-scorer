@@ -148,6 +148,57 @@ const getWicketsRemaining = (
   currentBatsmen: MatchState['currentBatsmen']
 ): number => Math.max(0, getMaxWickets(match, currentBatsmen) - totalWickets);
 
+const isLegalBall = (ball: Ball): boolean =>
+  !ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball');
+
+const calculateBowlerStats = (
+  innings: Innings,
+  bowlerId: string
+): MatchState['currentBowler'] => {
+  let balls = 0;
+  let runs = 0;
+  let wickets = 0;
+  let maidens = 0;
+
+  innings.overs.forEach(over => {
+    let overLegalBalls = 0;
+    let overRuns = 0;
+
+    over.balls.forEach(ball => {
+      if (ball.bowlerId !== bowlerId) {
+        return;
+      }
+
+      if (isLegalBall(ball)) {
+        balls += 1;
+        overLegalBalls += 1;
+      }
+
+      const ballRuns = ball.runs + (ball.extras?.runs || 0);
+      runs += ballRuns;
+      overRuns += ballRuns;
+
+      if (ball.wicket) {
+        wickets += 1;
+      }
+    });
+
+    if (overLegalBalls === 6 && overRuns === 0) {
+      maidens += 1;
+    }
+  });
+
+  return {
+    playerId: bowlerId,
+    overs: Math.floor(balls / 6),
+    balls,
+    runs,
+    wickets,
+    economy: balls > 0 ? (runs / balls) * 6 : 0,
+    maidens,
+  };
+};
+
 export const useMatchStore = create<MatchStore>((set, get) => ({
   ...initialState,
 
@@ -344,54 +395,12 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       if (currentOver) {
         // Active over exists - use its bowler and calculate stats
         const bowlerId = currentOver.bowlerId;
-        let balls = 0, runs = 0, wickets = 0, maidens = 0;
-
-        // Calculate bowler stats from all overs
-        currentInnings.overs.forEach(over => {
-          if (over.bowlerId === bowlerId) {
-            const ballsInOver = over.balls.filter(b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')).length;
-            balls += ballsInOver;
-            runs += over.runs;
-            wickets += over.wickets;
-            if (over.runs === 0 && ballsInOver === 6) maidens++;
-          }
-        });
-
-        currentBowler = {
-          playerId: bowlerId,
-          overs: Math.floor(balls / 6),
-          balls,
-          runs,
-          wickets,
-          economy: balls > 0 ? (runs / balls) * 6 : 0,
-          maidens,
-        };
+        currentBowler = calculateBowlerStats(currentInnings, bowlerId);
       } else if (currentInnings.overs.length > 0) {
         // No active over but overs exist - use last over's bowler
         const lastOver = currentInnings.overs[currentInnings.overs.length - 1];
         const bowlerId = lastOver.bowlerId;
-        let balls = 0, runs = 0, wickets = 0, maidens = 0;
-
-        // Calculate bowler stats from all overs
-        currentInnings.overs.forEach(over => {
-          if (over.bowlerId === bowlerId) {
-            const ballsInOver = over.balls.filter(b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')).length;
-            balls += ballsInOver;
-            runs += over.runs;
-            wickets += over.wickets;
-            if (over.runs === 0 && ballsInOver === 6) maidens++;
-          }
-        });
-
-        currentBowler = {
-          playerId: bowlerId,
-          overs: Math.floor(balls / 6),
-          balls,
-          runs,
-          wickets,
-          economy: balls > 0 ? (runs / balls) * 6 : 0,
-          maidens,
-        };
+        currentBowler = calculateBowlerStats(currentInnings, bowlerId);
       } else if (bowlingTeam && bowlingTeam.players.length > 0) {
         // No overs yet - use first bowler from bowling team
         currentBowler = {
@@ -855,43 +864,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const state = get();
     if (!state.currentInnings || !state.match) return;
 
-    // Calculate the bowler's stats from all balls they've bowled in this innings
-    const bowlerStats = {
-      playerId: newBowlerId,
-      overs: 0,
-      balls: 0,
-      runs: 0,
-      wickets: 0,
-      economy: 0,
-      maidens: 0,
-    };
-
-    // Go through all overs and count balls bowled by this bowler
-    state.currentInnings.overs.forEach(over => {
-      if (over.bowlerId === newBowlerId) {
-        over.balls.forEach(ball => {
-          // Count legal balls (not wides or no-balls)
-          const isLegalBall = !ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball');
-          if (isLegalBall) {
-            bowlerStats.balls++;
-          }
-
-          // Add runs (including extras)
-          bowlerStats.runs += ball.runs + (ball.extras?.runs || 0);
-
-          // Count wickets
-          if (ball.wicket) {
-            bowlerStats.wickets++;
-          }
-        });
-      }
-    });
-
-    // Calculate overs and economy
-    bowlerStats.overs = Math.floor(bowlerStats.balls / 6);
-    bowlerStats.economy = bowlerStats.balls > 0
-      ? (bowlerStats.runs / bowlerStats.balls) * 6
-      : 0;
+    const bowlerStats = calculateBowlerStats(state.currentInnings, newBowlerId);
 
     const openOverFromInnings = state.currentInnings.overs.find(over => !over.completed) ?? null;
     const pendingOver = openOverFromInnings || state.currentOver;
@@ -920,7 +893,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         ),
       };
       updatedCurrentOver = nextOver;
-    } else if (pendingOver.balls.length === 0 && pendingOver.bowlerId !== newBowlerId) {
+    } else if (pendingOver.bowlerId !== newBowlerId) {
       const nextOver: Over = {
         ...pendingOver,
         bowlerId: newBowlerId,
@@ -1407,18 +1380,27 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const state = get();
     if (!state.match || !state.currentInnings) return;
 
-    // Get the current over
-    const currentOver = state.currentInnings.overs[state.currentInnings.overs.length - 1];
-    if (!currentOver || currentOver.balls.length === 0) {      return;
+    let currentOverIndex = -1;
+    for (let index = state.currentInnings.overs.length - 1; index >= 0; index -= 1) {
+      if (state.currentInnings.overs[index].balls.length > 0) {
+        currentOverIndex = index;
+        break;
+      }
     }
+    if (currentOverIndex < 0) {
+      return;
+    }
+    const currentOver = state.currentInnings.overs[currentOverIndex];
 
     // Get the last ball
     const lastBall = currentOver.balls[currentOver.balls.length - 1];
 
     // Remove the last ball from the over
     const updatedBalls = currentOver.balls.slice(0, -1);
+    const revertedBowlerId = updatedBalls[updatedBalls.length - 1]?.bowlerId ?? currentOver.bowlerId;
     const updatedOver: Over = {
       ...currentOver,
+      bowlerId: revertedBowlerId,
       balls: updatedBalls,
       runs: currentOver.runs - lastBall.runs - (lastBall.extras?.runs || 0),
       wickets: currentOver.wickets - (lastBall.wicket ? 1 : 0),
@@ -1429,9 +1411,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     const isLegalBall = !lastBall.extras || (lastBall.extras.type !== 'wide' && lastBall.extras.type !== 'noball');
     const updatedInnings: Innings = {
       ...state.currentInnings,
-      overs: state.currentInnings.overs.map(o =>
-        o.number === updatedOver.number ? updatedOver : o
-      ),
+      overs: [
+        ...state.currentInnings.overs.slice(0, currentOverIndex),
+        updatedOver,
+      ],
       totalRuns: state.currentInnings.totalRuns - lastBall.runs - (lastBall.extras?.runs || 0),
       totalWickets: state.currentInnings.totalWickets - (lastBall.wicket ? 1 : 0),
       totalBalls: state.currentInnings.totalBalls - (isLegalBall ? 1 : 0),
@@ -1476,21 +1459,11 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       }
     }
 
-    // Recalculate bowler stats
-    const updatedBowler = {
-      ...state.currentBowler!,
-      balls: state.currentBowler!.balls - (isLegalBall ? 1 : 0),
-      runs: state.currentBowler!.runs - lastBall.runs - (lastBall.extras?.runs || 0),
-      wickets: state.currentBowler!.wickets - (lastBall.wicket ? 1 : 0),
-      overs: Math.floor((state.currentBowler!.balls - (isLegalBall ? 1 : 0)) / 6),
-      economy: (state.currentBowler!.balls - (isLegalBall ? 1 : 0)) > 0
-        ? ((state.currentBowler!.runs - lastBall.runs - (lastBall.extras?.runs || 0)) / (state.currentBowler!.balls - (isLegalBall ? 1 : 0))) * 6
-        : 0,
-    };
+    const updatedBowler = calculateBowlerStats(updatedInnings, updatedOver.bowlerId);
 
     set({
       currentInnings: updatedInnings,
-      currentOver: updatedBalls.length > 0 ? updatedOver : null,
+      currentOver: updatedOver,
       currentBatsmen: updatedBatsmen,
       currentBowler: updatedBowler,
       match: {

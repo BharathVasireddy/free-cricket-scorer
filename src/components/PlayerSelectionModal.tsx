@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { X, Search, Check } from 'lucide-react';
 import type { SavedPlayer } from '../types';
 
@@ -9,6 +9,7 @@ interface PlayerSelectionModalProps {
     onSelect: (selectedPlayers: SavedPlayer[]) => void;
     title: string;
     maxSelection?: number;
+    confirmLabel?: string;
 }
 
 const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
@@ -17,10 +18,18 @@ const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
     players,
     onSelect,
     title,
-    maxSelection
+    maxSelection,
+    confirmLabel = 'Add Selected Players',
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedPlayerIds(new Set());
+            setSearchQuery('');
+        }
+    }, [isOpen]);
 
     const filteredPlayers = useMemo(() => {
         return players.filter(player =>
@@ -137,7 +146,7 @@ const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
                         disabled={selectedPlayerIds.size === 0}
                         className="w-full py-3 bg-gradient-to-r from-cricket-blue to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
                     >
-                        <span>Add Selected Players</span>
+                        <span>{confirmLabel}</span>
                         <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
                             {selectedPlayerIds.size}
                         </span>

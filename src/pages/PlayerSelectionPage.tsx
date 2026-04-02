@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
+import type { Player } from '../types';
+
+type SelectablePlayer = Player & {
+  isJoker?: boolean;
+};
 
 const PlayerSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +36,40 @@ const PlayerSelectionPage: React.FC = () => {
   }
 
   const requiredBatsmen = match.isSingleSide ? 1 : 2;
+  const shouldIncludeJoker = Boolean(
+    match.hasJoker &&
+    match.jokerName &&
+    !battingTeam.players.some(player => player.name.trim().toUpperCase() === match.jokerName?.trim().toUpperCase()) &&
+    !bowlingTeam.players.some(player => player.name.trim().toUpperCase() === match.jokerName?.trim().toUpperCase())
+  );
+  const battingJokerId = `joker-${battingTeam.id}`;
+  const bowlingJokerId = `joker-${bowlingTeam.id}`;
+  const isJokerSelectedForBatting = selectedBatsmen.includes(battingJokerId);
+  const isJokerSelectedForBowling = selectedBowler === bowlingJokerId;
 
+  const battingOptions: SelectablePlayer[] = shouldIncludeJoker && !isJokerSelectedForBowling
+    ? [
+      ...battingTeam.players,
+      {
+        id: battingJokerId,
+        name: match.jokerName!,
+        role: 'allrounder',
+        isJoker: true,
+      },
+    ]
+    : battingTeam.players;
+
+  const bowlingOptions: SelectablePlayer[] = shouldIncludeJoker && !isJokerSelectedForBatting
+    ? [
+      ...bowlingTeam.players,
+      {
+        id: bowlingJokerId,
+        name: match.jokerName!,
+        role: 'allrounder',
+        isJoker: true,
+      },
+    ]
+    : bowlingTeam.players;
 
   const handleBatsmanToggle = (playerId: string) => {
     setSelectedBatsmen(prev => {
@@ -108,7 +146,7 @@ const PlayerSelectionPage: React.FC = () => {
             </div>
 
             <div className="grid gap-3">
-              {battingTeam.players.map((player) => (
+              {battingOptions.map((player) => (
                 <button
                   key={player.id}
                   onClick={() => handleBatsmanToggle(player.id)}
@@ -122,7 +160,15 @@ const PlayerSelectionPage: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="font-semibold">{player.name}</div>
+                    <div>
+                      <div className="font-semibold">
+                        {player.name}
+                        {player.isJoker && <span className="ml-2">🃏</span>}
+                      </div>
+                      {player.isJoker && (
+                        <div className="text-xs text-yellow-700 mt-1">Joker</div>
+                      )}
+                    </div>
                     <div className="text-2xl">
                       {selectedBatsmen.includes(player.id) ? '✓' : '○'}
                     </div>
@@ -138,7 +184,7 @@ const PlayerSelectionPage: React.FC = () => {
                 </div>
                 <div className="text-green-700 mt-1">
                   {selectedBatsmen.map(id => 
-                    battingTeam.players.find(p => p.id === id)?.name
+                    battingOptions.find(p => p.id === id)?.name
                   ).join(', ')}
                 </div>
               </div>
@@ -157,7 +203,7 @@ const PlayerSelectionPage: React.FC = () => {
             </div>
 
             <div className="grid gap-3">
-              {bowlingTeam.players.map((player) => (
+              {bowlingOptions.map((player) => (
                 <button
                   key={player.id}
                   onClick={() => handleBowlerSelect(player.id)}
@@ -168,7 +214,15 @@ const PlayerSelectionPage: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="font-semibold">{player.name}</div>
+                    <div>
+                      <div className="font-semibold">
+                        {player.name}
+                        {player.isJoker && <span className="ml-2">🃏</span>}
+                      </div>
+                      {player.isJoker && (
+                        <div className="text-xs text-yellow-700 mt-1">Joker</div>
+                      )}
+                    </div>
                     <div className="text-2xl">
                       {selectedBowler === player.id ? '✓' : '○'}
                     </div>
@@ -183,7 +237,7 @@ const PlayerSelectionPage: React.FC = () => {
                   Selected Bowler:
                 </div>
                 <div className="text-blue-700 mt-1">
-                  {bowlingTeam.players.find(p => p.id === selectedBowler)?.name}
+                  {bowlingOptions.find(p => p.id === selectedBowler)?.name}
                 </div>
               </div>
             )}

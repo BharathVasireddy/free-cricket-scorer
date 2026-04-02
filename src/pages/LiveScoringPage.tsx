@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/matchStore';
 import { useNavigate } from 'react-router-dom';
-import type { Ball, BatsmanStats } from '../types';
+import type { Ball, BatsmanStats, Player } from '../types';
 
 const normalizeWicketType = (value: string): Ball['wicketType'] => {
   switch (value.toLowerCase().replace(/\s+/g, '')) {
@@ -20,6 +20,20 @@ const normalizeWicketType = (value: string): Ball['wicketType'] => {
     default:
       return 'out';
   }
+};
+
+const isJokerPlayerId = (playerId?: string | null): boolean => Boolean(playerId && playerId.toLowerCase().includes('joker'));
+
+const buildVirtualJokerPlayer = (teamId?: string, jokerName?: string): Player | null => {
+  if (!teamId || !jokerName) {
+    return null;
+  }
+
+  return {
+    id: `joker-${teamId}`,
+    name: jokerName,
+    role: 'allrounder',
+  };
 };
 
 const LiveScoringPage: React.FC = () => {
@@ -83,8 +97,9 @@ const LiveScoringPage: React.FC = () => {
   const hasRequiredMatchState = Boolean(match && currentInnings && currentBatsmen && currentBowler);
   const battingTeam = match?.teams.find(t => t.id === currentInnings?.battingTeamId);
   const bowlingTeam = match?.teams.find(t => t.id === currentInnings?.bowlingTeamId);
-  const currentBowlerPlayer = bowlingTeam?.players.find(p => p.id === currentBowler?.playerId);
-  const jokerPlayerId = battingTeam ? `joker-${battingTeam.id}` : 'joker';
+  const battingJokerPlayer = match?.hasJoker ? buildVirtualJokerPlayer(battingTeam?.id, match.jokerName) : null;
+  const bowlingJokerPlayer = match?.hasJoker ? buildVirtualJokerPlayer(bowlingTeam?.id, match.jokerName) : null;
+  const battingJokerId = battingJokerPlayer?.id ?? 'joker';
 
   // Handle both single batsman and pair of batsmen
   // Check if we're in single batting mode (either from start or switched during match)
@@ -94,6 +109,13 @@ const LiveScoringPage: React.FC = () => {
     : currentBatsmen
       ? [currentBatsmen]
       : [];
+  const findBattingPlayerById = (playerId?: string) =>
+    battingTeam?.players.find(player => player.id === playerId)
+    ?? (battingJokerPlayer?.id === playerId ? battingJokerPlayer : undefined);
+  const findBowlingPlayerById = (playerId?: string) =>
+    bowlingTeam?.players.find(player => player.id === playerId)
+    ?? (bowlingJokerPlayer?.id === playerId ? bowlingJokerPlayer : undefined);
+  const currentBowlerPlayer = findBowlingPlayerById(currentBowler?.playerId);
   const activeMatch = match as NonNullable<typeof match>;
   const activeInnings = currentInnings as NonNullable<typeof currentInnings>;
   const activeBowler = currentBowler as NonNullable<typeof currentBowler>;
@@ -221,8 +243,15 @@ const LiveScoringPage: React.FC = () => {
 
   const handleBatsmanChange = (newBatsmanId: string) => {
     const currentBatsman = batsmen[selectedBatsmanIndex];
+    const createsJokerConflict = isJokerPlayerId(newBatsmanId) && isJokerPlayerId(currentBowler?.playerId);
     changeBatsman(currentBatsman.playerId, newBatsmanId);
     setIsBatsmanModalOpen(false);
+
+    if (createsJokerConflict) {
+      setTimeout(() => {
+        setIsBowlerModalOpen(true);
+      }, 0);
+    }
   };
 
   // Get available batsmen (excluding current batsmen and out batsmen)
@@ -249,17 +278,13 @@ const LiveScoringPage: React.FC = () => {
 
     // Add joker if available for both teams
     if (activeMatch.hasJoker && activeMatch.jokerName) {
-      const jokerOut = outBatsmenIds.has(jokerPlayerId);
-      const jokerCurrentlyBatting = currentBatsmanIds.includes(jokerPlayerId);
+      const jokerOut = outBatsmenIds.has(battingJokerId);
+      const jokerCurrentlyBatting = currentBatsmanIds.includes(battingJokerId);
 
       // If joker not out and not currently batting, add to available
-      if (!jokerOut && !jokerCurrentlyBatting) {
+      if (!jokerOut && !jokerCurrentlyBatting && battingJokerPlayer) {
         // Add virtual joker player
-        availablePlayers.push({
-          id: jokerPlayerId,
-          name: activeMatch.jokerName,
-          role: 'allrounder' as const
-        });
+        availablePlayers.push(battingJokerPlayer);
       }
     }
 
@@ -282,7 +307,17 @@ const LiveScoringPage: React.FC = () => {
       lastCompletedOverBowlerId = activeInnings.overs[activeInnings.overs.length - 1]?.bowlerId;
     }
 
-    return bowlingTeam?.players.map(player => {
+    const bowlerOptions = [...(bowlingTeam?.players ?? [])];
+    const jokerCanAppearAsBowler = Boolean(
+      bowlingJokerPlayer &&
+      !batsmen.some(batsman => isJokerPlayerId(batsman.playerId))
+    );
+
+    if (jokerCanAppearAsBowler && bowlingJokerPlayer) {
+      bowlerOptions.push(bowlingJokerPlayer);
+    }
+
+    return bowlerOptions.map(player => {
       let status = '';
       let isDisabled = false;
 
@@ -293,7 +328,7 @@ const LiveScoringPage: React.FC = () => {
       }
 
       return { player, status, isDisabled };
-    }) || [];
+    });
   };
 
   const getCurrentOver = () => {
@@ -356,9 +391,10 @@ const LiveScoringPage: React.FC = () => {
   // Check if match overs are complete
   const totalOversCompleted = currentInnings ? Math.floor(currentInnings.totalBalls / 6) : 0;
   const isMatchComplete = Boolean(match && totalOversCompleted >= match.overs);
+  const isJokerConflict = batsmen.some(batsman => isJokerPlayerId(batsman.playerId)) && isJokerPlayerId(currentBowler?.playerId);
 
   // Disable scoring if over is complete OR match is complete
-  const shouldDisableScoring = isOverComplete || isMatchComplete;
+  const shouldDisableScoring = isOverComplete || isMatchComplete || isJokerConflict;
 
   // Auto-open bowler modal when over is complete (but not match complete)
   useEffect(() => {
@@ -370,6 +406,12 @@ const LiveScoringPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [isOverComplete, isMatchComplete, isBowlerModalOpen]);
+
+  useEffect(() => {
+    if (isJokerConflict && !isBowlerModalOpen) {
+      setIsBowlerModalOpen(true);
+    }
+  }, [isBowlerModalOpen, isJokerConflict]);
 
   // Handle innings completion automatically
   useEffect(() => {
@@ -575,8 +617,8 @@ const LiveScoringPage: React.FC = () => {
             </div>
             <div className="space-y-2">
               {batsmen.map((batsman, index) => {
-                const player = battingTeam?.players.find(p => p.id === batsman.playerId);
-                const isJoker = activeMatch.hasJoker && player?.name === activeMatch.jokerName;
+                const player = findBattingPlayerById(batsman.playerId);
+                const isJoker = isJokerPlayerId(player?.id);
                 const isOnStrike = selectedBatsmanIndex === index;
                 const showStrike = !isCurrentlySingleBatting;
                 const strikeRate = batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0';
@@ -629,7 +671,7 @@ const LiveScoringPage: React.FC = () => {
               <div>
                 <div className="font-semibold text-gray-900 text-sm">
                   {currentBowlerPlayer?.name}
-                  {activeMatch.hasJoker && currentBowlerPlayer?.name === activeMatch.jokerName && (
+                  {isJokerPlayerId(currentBowlerPlayer?.id) && (
                     <span className="ml-1">🃏</span>
                   )}
                 </div>
@@ -713,6 +755,16 @@ const LiveScoringPage: React.FC = () => {
           );
         }
 
+        if (isJokerConflict) {
+          return (
+            <div className="bg-red-500 text-white px-4 py-4 text-center flex-shrink-0">
+              <div className="text-sm font-medium">
+                Joker cannot bowl to joker. Select a new bowler to continue.
+              </div>
+            </div>
+          );
+        }
+
         return null;
       })()}
 
@@ -724,7 +776,7 @@ const LiveScoringPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {[0, 1, 2, 3, 4, 6].map(runs => {
                 const currentBatsman = batsmen[selectedBatsmanIndex];
-                const isJoker = activeMatch.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === activeMatch.jokerName;
+                const isJoker = isJokerPlayerId(findBattingPlayerById(currentBatsman.playerId)?.id);
 
                 return (
                   <button

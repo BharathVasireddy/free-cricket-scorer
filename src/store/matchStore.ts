@@ -3,12 +3,15 @@ import type { MatchState, Match, Ball, Over, Innings, BatsmanStats } from '../ty
 import { createMatch as createMatchFirebase, updateMatchRealtime } from '../lib/matchService';
 import { getErrorMessage } from '../lib/errorUtils';
 import { clearStoredActiveMatch, setStoredActiveMatch } from '../lib/activeMatchStorage';
+import { creditsBowlerWicket } from '../lib/dismissalUtils';
 
 interface MatchStore extends MatchState {
   // Firebase integration
   firebaseDocId: string | null;
   matchCode: string | null;
   lastSaveTime: Date | null;
+  isSaving: boolean;
+  saveError: string | null;
 
   // Actions
   createMatch: (match: Omit<Match, 'id' | 'createdAt'>, userId: string) => Promise<void>;
@@ -34,6 +37,8 @@ const initialState: MatchState & {
   firebaseDocId: string | null;
   matchCode: string | null;
   lastSaveTime: Date | null;
+  isSaving: boolean;
+  saveError: string | null;
 } = {
   match: null,
   currentInnings: null,
@@ -45,6 +50,8 @@ const initialState: MatchState & {
   firebaseDocId: null,
   matchCode: null,
   lastSaveTime: null,
+  isSaving: false,
+  saveError: null,
 };
 
 const syncActiveMatchPersistence = (match: Match | null, firebaseDocId: string | null): void => {
@@ -178,7 +185,7 @@ const calculateBowlerStats = (
       runs += ballRuns;
       overRuns += ballRuns;
 
-      if (ball.wicket) {
+      if (creditsBowlerWicket(ball)) {
         wickets += 1;
       }
     });
@@ -281,6 +288,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         firebaseDocId: docId,
         matchCode,
         lastSaveTime: new Date(),
+        isSaving: false,
+        saveError: null,
         isLoading: false,
         error: null,
       });
@@ -297,12 +306,14 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
 
   loadMatch: (match) => {
     // Load an existing match from Firebase (for recovery)
-    const currentInnings = match.innings[match.currentInning - 1];
+    const currentInnings = match.innings[match.currentInning - 1]
+      ?? match.innings[match.innings.length - 1]
+      ?? null;
 
     // Reconstruct current batsmen state
     let currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] | null = null;
 
-    if (currentInnings && !currentInnings.isCompleted) {
+    if (currentInnings) {
       const singleBatterInnings = isSingleBatterInnings(match, currentInnings);
 
       if (singleBatterInnings) {
@@ -424,6 +435,8 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       firebaseDocId: match.id,
       matchCode: match.matchCode ?? null,
       lastSaveTime: new Date(),
+      isSaving: false,
+      saveError: null,
       isLoading: false,
       error: null,
     });
@@ -543,7 +556,7 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       ...state.currentBowler!,
       balls: state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1),
       runs: state.currentBowler!.runs + ball.runs + (ball.extras?.runs || 0),
-      wickets: state.currentBowler!.wickets + (ball.wicket ? 1 : 0),
+      wickets: state.currentBowler!.wickets + (creditsBowlerWicket(ball) ? 1 : 0),
       overs: Math.floor((state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1)) / 6),
       economy: (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1)) > 0
         ? ((state.currentBowler!.runs + ball.runs + (ball.extras?.runs || 0)) / (state.currentBowler!.balls + (ball.extras?.type === 'wide' || ball.extras?.type === 'noball' ? 0 : 1))) * 6
@@ -1471,7 +1484,10 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
         innings: state.match.innings.map(i =>
           i.number === updatedInnings.number ? updatedInnings : i
         ),
+        currentInning: updatedInnings.number,
         status: 'active',
+        winner: undefined,
+        winMargin: undefined,
       },
     });
 
@@ -1488,11 +1504,20 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
     if (!matchId) return;
 
     try {
+      set({ isSaving: true, saveError: null });
       await updateMatchRealtime(matchId, state.match);
-      set({ firebaseDocId: matchId, lastSaveTime: new Date() });
+      set({
+        firebaseDocId: matchId,
+        lastSaveTime: new Date(),
+        isSaving: false,
+        saveError: null,
+      });
       syncActiveMatchPersistence(state.match, matchId);
     } catch {
-      set({ error: 'Failed to save match - will retry' });
+      set({
+        isSaving: false,
+        saveError: 'Failed to save match - will retry',
+      });
     }
   },
 }));

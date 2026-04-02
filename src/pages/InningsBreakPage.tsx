@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
+import { creditsBowlerWicket, formatDismissal } from '../lib/dismissalUtils';
 
 const InningsBreakPage: React.FC = () => {
   const navigate = useNavigate();
-  const { match } = useMatchStore();
+  const { match, undoLastBall } = useMatchStore();
 
   if (!match || match.innings.length === 0) {
     navigate('/setup');
@@ -43,7 +44,7 @@ const InningsBreakPage: React.FC = () => {
           if (ball.runs === 6) current.sixes += 1;
           if (ball.wicket && ball.batsmanId === current.playerId) {
             current.isOut = true;
-            current.dismissalType = ball.wicketType || 'out';
+            current.dismissalType = formatDismissal(ball, bowlingTeam, match.jokerName);
           }
 
           batsmenStats.set(ball.batsmanId, current);
@@ -95,7 +96,7 @@ const InningsBreakPage: React.FC = () => {
         }
 
         // Count wickets
-        if (ball.wicket) {
+        if (creditsBowlerWicket(ball)) {
           current.wickets += 1;
         }
 
@@ -125,6 +126,10 @@ const InningsBreakPage: React.FC = () => {
 
   const battingStats = getBattingStats();
   const bowlingStats = getBowlingStats();
+  const handleUndoLastBall = () => {
+    undoLastBall();
+    navigate('/live');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-safe">
@@ -217,6 +222,13 @@ const InningsBreakPage: React.FC = () => {
 
         {/* Start Second Innings Button */}
         <div className="space-y-3">
+          <button
+            onClick={handleUndoLastBall}
+            className="w-full bg-gray-200 text-gray-800 font-semibold py-4 px-6 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            ↶ Undo Last Ball
+          </button>
+
           <button
             onClick={() => navigate('/players-second')}
             className="w-full bg-green-600 text-white font-bold py-4 px-6 rounded-lg hover:bg-green-700 transition-colors"

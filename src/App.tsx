@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import BottomNav from './components/navigation/BottomNav';
@@ -6,6 +6,7 @@ import { useAuth } from './contexts/useAuth';
 import { useMatchStore } from './store/matchStore';
 import { clearStoredActiveMatch, getStoredActiveMatch } from './lib/activeMatchStorage';
 import { getMatchById } from './lib/matchService';
+import { getMatchContinueRoute } from './lib/matchNavigation';
 
 // Lazy load page components
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -44,6 +45,7 @@ const MATCH_RECOVERY_PATHS = new Set([
 
 const MatchRecoveryGate = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { currentUser, isLoading } = useAuth();
   const match = useMatchStore(state => state.match);
   const loadMatch = useMatchStore(state => state.loadMatch);
@@ -82,6 +84,11 @@ const MatchRecoveryGate = ({ children }: { children: React.ReactNode }) => {
         }
 
         loadMatch(savedMatch);
+
+        const continuationRoute = getMatchContinueRoute(savedMatch);
+        if (location.pathname === '/live' && continuationRoute !== '/live') {
+          navigate(continuationRoute, { replace: true });
+        }
       } catch {
         // Keep the stored reference so the user can retry after a transient network issue.
       } finally {
@@ -96,7 +103,7 @@ const MatchRecoveryGate = ({ children }: { children: React.ReactNode }) => {
     return () => {
       isCancelled = true;
     };
-  }, [currentUser, isLoading, loadMatch, location.pathname, match]);
+  }, [currentUser, isLoading, loadMatch, location.pathname, match, navigate]);
 
   if (isRecovering) {
     return <LoadingSpinner />;

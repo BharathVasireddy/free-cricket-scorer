@@ -409,6 +409,79 @@ describe('matchStore edge cases', () => {
     );
   });
 
+  it('loads the completed first innings when firestore currentInning points to 2 before the chase exists', () => {
+    const loadedMatch: Match = {
+      ...buildMatchInput({ playersPerTeam: 3, isSingleSide: true, hasJoker: true, overs: 2 }),
+      id: 'match-pending-second-innings',
+      createdAt: new Date(),
+      userId: 'user-1',
+      currentInning: 2,
+      innings: [
+        {
+          number: 1,
+          battingTeamId: 'team1',
+          bowlingTeamId: 'team2',
+          overs: [
+            {
+              number: 1,
+              bowlerId: 'team2_player_1',
+              balls: [
+                {
+                  runs: 1,
+                  extras: null,
+                  wicket: false,
+                  batsmanId: 'team1_player_1',
+                  bowlerId: 'team2_player_1',
+                  overNumber: 1,
+                  ballNumber: 1,
+                },
+                {
+                  runs: 0,
+                  extras: null,
+                  wicket: true,
+                  wicketType: 'caught',
+                  fielderId: 'team2_player_2',
+                  batsmanId: 'team1_player_1',
+                  bowlerId: 'team2_player_1',
+                  overNumber: 1,
+                  ballNumber: 2,
+                },
+              ],
+              runs: 1,
+              wickets: 1,
+              completed: false,
+            },
+          ],
+          totalRuns: 1,
+          totalWickets: 1,
+          totalBalls: 2,
+          currentBatsmanIds: 'team1_player_1',
+          isCompleted: true,
+        },
+      ],
+    };
+
+    useMatchStore.getState().loadMatch(loadedMatch);
+
+    const state = useMatchStore.getState();
+
+    expect(state.currentInnings?.number).toBe(1);
+    expect(state.currentInnings?.isCompleted).toBe(true);
+    expect(state.currentBatsmen).toMatchObject({
+      playerId: 'team1_player_1',
+      runs: 1,
+      balls: 2,
+      isOut: true,
+      dismissalType: 'caught',
+    });
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      balls: 2,
+      runs: 1,
+      wickets: 1,
+    });
+  });
+
   it('persists the next selected bowler as a pending over for refresh recovery', async () => {
     await createMatch({ playersPerTeam: 3, isSingleSide: false });
 
@@ -505,6 +578,35 @@ describe('matchStore edge cases', () => {
       balls: 2,
       runs: 3,
       wickets: 0,
+    });
+  });
+
+  it('keeps run out wickets off the bowler tally while still counting the team wicket', async () => {
+    await createMatch({ playersPerTeam: 4, isSingleSide: false });
+
+    useMatchStore.getState().addBall({
+      runs: 0,
+      extras: null,
+      wicket: true,
+      wicketType: 'runout',
+      fielderId: 'team2_player_2',
+      batsmanId: 'team1_player_1',
+      bowlerId: 'team2_player_1',
+    });
+
+    const state = useMatchStore.getState();
+
+    expect(state.currentInnings?.totalWickets).toBe(1);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team2_player_1',
+      wickets: 0,
+      balls: 1,
+      runs: 0,
+    });
+    expect(state.currentInnings?.overs[0].balls[0]).toMatchObject({
+      wicket: true,
+      wicketType: 'runout',
+      fielderId: 'team2_player_2',
     });
   });
 
@@ -615,6 +717,136 @@ describe('matchStore edge cases', () => {
       playerId: 'team2_player_2',
       balls: 0,
       runs: 0,
+      wickets: 0,
+    });
+  });
+
+  it('reopens the first innings state when undoing the final ball of the innings', async () => {
+    await createMatch({ playersPerTeam: 4, overs: 1, isSingleSide: false });
+
+    for (let ball = 0; ball < 6; ball += 1) {
+      scoreLegalBall(1);
+    }
+
+    let state = useMatchStore.getState();
+    expect(state.currentInnings?.number).toBe(1);
+    expect(state.currentInnings?.isCompleted).toBe(true);
+    expect(state.match?.currentInning).toBe(2);
+
+    useMatchStore.getState().undoLastBall();
+
+    state = useMatchStore.getState();
+    expect(state.currentInnings?.number).toBe(1);
+    expect(state.currentInnings?.isCompleted).toBe(false);
+    expect(state.currentInnings?.totalBalls).toBe(5);
+    expect(state.match?.currentInning).toBe(1);
+    expect(state.match?.status).toBe('active');
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(5);
+  });
+
+  it('reopens the chase when undoing a winning ball in the second innings', async () => {
+    await createMatch({ playersPerTeam: 4, overs: 2, isSingleSide: false });
+
+    const secondInnings: Innings = {
+      number: 2,
+      battingTeamId: 'team2',
+      bowlingTeamId: 'team1',
+      overs: [
+        {
+          number: 1,
+          bowlerId: 'team1_player_1',
+          balls: [
+            {
+              runs: 1,
+              extras: null,
+              wicket: false,
+              batsmanId: 'team2_player_1',
+              bowlerId: 'team1_player_1',
+              overNumber: 1,
+              ballNumber: 1,
+            },
+          ],
+          runs: 1,
+          wickets: 0,
+          completed: false,
+        },
+      ],
+      totalRuns: 1,
+      totalWickets: 0,
+      totalBalls: 1,
+      currentBatsmanIds: ['team2_player_1', 'team2_player_2'],
+      isCompleted: false,
+      target: 2,
+    };
+
+    useMatchStore.setState(state => ({
+      match: {
+        ...state.match!,
+        currentInning: 2,
+        innings: [
+          {
+            ...state.match!.innings[0],
+            isCompleted: true,
+            totalRuns: 1,
+            totalBalls: 6,
+          },
+          secondInnings,
+        ],
+        status: 'active',
+        winner: undefined,
+        winMargin: undefined,
+      },
+      currentInnings: secondInnings,
+      currentOver: secondInnings.overs[0],
+      currentBatsmen: [
+        makeBatsmanStats('team2_player_1', { runs: 1, balls: 1 }),
+        makeBatsmanStats('team2_player_2'),
+      ],
+      currentBowler: {
+        playerId: 'team1_player_1',
+        overs: 0,
+        balls: 1,
+        runs: 1,
+        wickets: 0,
+        economy: 6,
+        maidens: 0,
+      },
+    }));
+
+    useMatchStore.getState().addBall({
+      runs: 1,
+      extras: null,
+      wicket: false,
+      batsmanId: 'team2_player_1',
+      bowlerId: 'team1_player_1',
+    });
+
+    let state = useMatchStore.getState();
+    expect(state.match?.status).toBe('completed');
+    expect(state.currentInnings?.isCompleted).toBe(true);
+    expect(state.match?.winner).toBe('TEAM B');
+    expect(state.match?.winMargin).toBe('3 wickets');
+
+    useMatchStore.getState().undoLastBall();
+
+    state = useMatchStore.getState();
+    expect(state.match?.status).toBe('active');
+    expect(state.match?.winner).toBeUndefined();
+    expect(state.match?.winMargin).toBeUndefined();
+    expect(state.match?.currentInning).toBe(2);
+    expect(state.currentInnings?.number).toBe(2);
+    expect(state.currentInnings?.isCompleted).toBe(false);
+    expect(state.currentInnings?.totalRuns).toBe(1);
+    expect(state.currentInnings?.totalBalls).toBe(1);
+    expect(state.currentOver?.balls).toHaveLength(1);
+    expect(state.currentBowler).toMatchObject({
+      playerId: 'team1_player_1',
+      balls: 1,
+      runs: 1,
       wickets: 0,
     });
   });

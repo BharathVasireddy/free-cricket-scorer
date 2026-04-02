@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useMatchStore } from '../store/matchStore';
 import { useNavigate } from 'react-router-dom';
 import type { Innings } from '../types';
+import { creditsBowlerWicket, formatDismissal } from '../lib/dismissalUtils';
+import { getMatchContinueRoute } from '../lib/matchNavigation';
 
 const ScorecardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +33,7 @@ const ScorecardPage: React.FC = () => {
   // Function to get batting stats for an innings
   const getBattingStats = (innings: Innings) => {
     const battingTeam = match.teams.find(t => t.id === innings.battingTeamId);
+    const bowlingTeam = match.teams.find(t => t.id === innings.bowlingTeamId);
     const allBatsmen = [...(battingTeam?.players || [])];
 
     // Check if joker has batted and add them if they're not in the team
@@ -62,7 +65,7 @@ const ScorecardPage: React.FC = () => {
             if (ball.runs === 6) sixes++;
             if (ball.wicket && (ball.batsmanId === player.id || isJokerBall)) {
               isOut = true;
-              dismissalType = ball.wicketType || 'out';
+              dismissalType = formatDismissal(ball, bowlingTeam, match.jokerName);
             }
           }
         });
@@ -124,7 +127,7 @@ const ScorecardPage: React.FC = () => {
             runs += ball.runs + (ball.extras?.runs || 0);
 
             // Count wickets
-            if (ball.wicket) {
+            if (creditsBowlerWicket(ball)) {
               wickets++;
             }
           }
@@ -206,7 +209,7 @@ const ScorecardPage: React.FC = () => {
                           </span>
                         </div>
                         {stat.isOut && (
-                          <div className="text-xs text-red-600 mt-1 capitalize">
+                          <div className="text-xs text-red-600 mt-1">
                             {stat.dismissalType}
                           </div>
                         )}
@@ -404,7 +407,7 @@ const ScorecardPage: React.FC = () => {
       {match.status !== 'completed' && (
         <div className="p-4 pb-6">
           <button
-            onClick={() => navigate('/live')}
+            onClick={() => navigate(getMatchContinueRoute(match))}
             className="w-full btn-primary py-4 text-lg font-semibold flex items-center justify-center space-x-2"
           >
             <span>🏏</span>

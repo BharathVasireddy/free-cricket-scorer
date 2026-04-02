@@ -24,6 +24,11 @@ const normalizeWicketType = (value: string): Ball['wicketType'] => {
 
 const isJokerPlayerId = (playerId?: string | null): boolean => Boolean(playerId && playerId.toLowerCase().includes('joker'));
 
+const isLegalBall = (ball: Ball): boolean =>
+  !ball.extras || (ball.extras.type !== 'wide' && ball.extras.type !== 'noball');
+
+const formatBallsAsOvers = (balls: number): string => `${Math.floor(balls / 6)}.${balls % 6}`;
+
 const buildVirtualJokerPlayer = (teamId?: string, jokerName?: string): Player | null => {
   if (!teamId || !jokerName) {
     return null;
@@ -43,6 +48,9 @@ const LiveScoringPage: React.FC = () => {
     currentInnings,
     currentBatsmen,
     currentBowler,
+    isSaving,
+    saveError,
+    lastSaveTime,
     addBall,
     changeBowler,
     changeBatsman,
@@ -60,6 +68,7 @@ const LiveScoringPage: React.FC = () => {
   const [isBatsmanModalOpen, setIsBatsmanModalOpen] = useState(false);
   const [isLastManModalOpen, setIsLastManModalOpen] = useState(false);
   const [lastManBatsmanId, setLastManBatsmanId] = useState<string>('');
+  const [pendingWicketType, setPendingWicketType] = useState<Ball['wicketType'] | null>(null);
 
   // Animation states
   const [animationType, setAnimationType] = useState<'four' | 'six' | 'wicket' | null>(null);
@@ -80,19 +89,6 @@ const LiveScoringPage: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [checkAndAbandonMatch, navigate]);
-
-  // Check for innings completion and navigate appropriately
-  useEffect(() => {
-    if (currentInnings?.isCompleted) {
-      if (currentInnings.number === 1) {
-        // First innings completed - go to innings break
-        navigate('/innings-break');
-      } else {
-        // Second innings completed - go to winner page  
-        navigate('/winner');
-      }
-    }
-  }, [currentInnings?.isCompleted, currentInnings?.number, navigate]);
 
   const hasRequiredMatchState = Boolean(match && currentInnings && currentBatsmen && currentBowler);
   const battingTeam = match?.teams.find(t => t.id === currentInnings?.battingTeamId);
@@ -212,16 +208,25 @@ const LiveScoringPage: React.FC = () => {
     setIsWicketModalOpen(true);
   };
 
-  const confirmWicket = (wicketType: string = 'out') => {
+  const closeWicketModal = () => {
+    setIsWicketModalOpen(false);
+    setPendingWicketType(null);
+  };
+
+  const confirmWicket = (
+    wicketType: Ball['wicketType'] = 'out',
+    fielderId?: string
+  ) => {
     addBall({
       runs: 0,
       extras: null,
       wicket: true,
-      wicketType: normalizeWicketType(wicketType),
+      wicketType,
+      fielderId,
       batsmanId: batsmen[selectedBatsmanIndex].playerId,
       bowlerId: activeBowler.playerId,
     });
-    setIsWicketModalOpen(false);
+    closeWicketModal();
 
     // Trigger wicket animation
     triggerAnimation('wicket');
@@ -234,6 +239,16 @@ const LiveScoringPage: React.FC = () => {
         setIsBatsmanModalOpen(true);
       }
     }, 1200); // Delay to ensure state update
+  };
+
+  const handleWicketTypeSelection = (wicketTypeLabel: string) => {
+    const wicketType = normalizeWicketType(wicketTypeLabel);
+    if (wicketType === 'caught' || wicketType === 'runout' || wicketType === 'stumped') {
+      setPendingWicketType(wicketType);
+      return;
+    }
+
+    confirmWicket(wicketType);
   };
 
   const handleBowlerChange = (newBowlerId: string) => {
@@ -373,12 +388,90 @@ const LiveScoringPage: React.FC = () => {
     });
   };
 
+  const getAvailableFielders = () => {
+    const fielders = [...(bowlingTeam?.players ?? [])];
+    const jokerCanField = Boolean(
+      bowlingJokerPlayer &&
+      !batsmen.some(batsman => isJokerPlayerId(batsman.playerId))
+    );
+
+    if (jokerCanField && bowlingJokerPlayer) {
+      fielders.push(bowlingJokerPlayer);
+    }
+
+    return fielders;
+  };
+
+  const getBatsmanOversPlayed = (playerId: string) => {
+    let ballsFaced = 0;
+
+    activeInnings.overs.forEach(over => {
+      over.balls.forEach(ball => {
+        if (ball.batsmanId === playerId && isLegalBall(ball)) {
+          ballsFaced += 1;
+        }
+      });
+    });
+
+    return formatBallsAsOvers(ballsFaced);
+  };
+
+  const getBowlerOversBowled = (playerId: string) => {
+    let ballsBowled = 0;
+
+    activeInnings.overs.forEach(over => {
+      over.balls.forEach(ball => {
+        if (ball.bowlerId === playerId && isLegalBall(ball)) {
+          ballsBowled += 1;
+        }
+      });
+    });
+
+    return formatBallsAsOvers(ballsBowled);
+  };
+
 
 
   const currentOver = currentInnings?.overs[currentInnings.overs.length - 1] ?? null;
   const ballsThisOver = currentOver?.balls.filter(
     b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')
   ).length || 0;
+  const currentRunRate = activeInnings.totalBalls > 0
+    ? ((activeInnings.totalRuns / activeInnings.totalBalls) * 6).toFixed(2)
+    : '0.00';
+  const ballsRemaining = Math.max(0, (activeMatch.overs * 6) - activeInnings.totalBalls);
+  const runsNeeded = Math.max(0, (activeInnings.target ?? 0) - activeInnings.totalRuns);
+  const requiredRunRate = activeInnings.target
+    ? ballsRemaining > 0
+      ? ((runsNeeded / (ballsRemaining / 6))).toFixed(2)
+      : '0.00'
+    : null;
+  const saveStatusLabel = isSaving
+    ? 'Syncing...'
+    : saveError
+      ? 'Save issue'
+      : lastSaveTime
+        ? `Saved ${lastSaveTime.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`
+        : 'Saving ready';
+  const saveStatusClassName = isSaving
+    ? 'text-amber-600'
+    : saveError
+      ? 'text-red-600'
+      : 'text-green-600';
+  const fielderPrompt = pendingWicketType === 'caught'
+    ? {
+      title: 'Who caught it?',
+      description: 'Pick the fielder. Selecting the bowler records a caught and bowled.',
+    }
+    : pendingWicketType === 'stumped'
+      ? {
+        title: 'Who completed the stumping?',
+        description: 'Pick the keeper or fielder involved in the stumping.',
+      }
+      : {
+        title: 'Who completed the run out?',
+        description: 'Pick the fielder involved in the run out.',
+      };
 
   // Over is complete if we have 6 valid balls AND there's a current over AND the current bowler matches
   const isOverComplete = Boolean(
@@ -392,9 +485,10 @@ const LiveScoringPage: React.FC = () => {
   const totalOversCompleted = currentInnings ? Math.floor(currentInnings.totalBalls / 6) : 0;
   const isMatchComplete = Boolean(match && totalOversCompleted >= match.overs);
   const isJokerConflict = batsmen.some(batsman => isJokerPlayerId(batsman.playerId)) && isJokerPlayerId(currentBowler?.playerId);
+  const isScoringLocked = activeInnings.isCompleted || activeMatch.status === 'completed';
 
   // Disable scoring if over is complete OR match is complete
-  const shouldDisableScoring = isOverComplete || isMatchComplete || isJokerConflict;
+  const shouldDisableScoring = isOverComplete || isMatchComplete || isJokerConflict || isScoringLocked;
 
   // Auto-open bowler modal when over is complete (but not match complete)
   useEffect(() => {
@@ -412,37 +506,6 @@ const LiveScoringPage: React.FC = () => {
       setIsBowlerModalOpen(true);
     }
   }, [isBowlerModalOpen, isJokerConflict]);
-
-  // Handle innings completion automatically
-  useEffect(() => {
-    if (!currentInnings || !match) return;
-
-    // Check if innings is completed (set by the store)
-    if (currentInnings.isCompleted) {
-      const isFirstInnings = currentInnings.number === 1;
-
-      // Navigate based on which innings just completed
-      const timer = setTimeout(() => {
-        if (isFirstInnings) {
-          navigate('/innings-break');
-        } else {
-          navigate('/winner');
-        }
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentInnings, match, navigate]);
-
-  // Handle match completion and navigate to winner page
-  useEffect(() => {
-    if (match?.status === 'completed') {
-      // Navigate to winner page after match completion
-      const timer = setTimeout(() => {
-        navigate('/winner');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [match?.status, navigate]);
 
   // Check for last man standing situation
   useEffect(() => {
@@ -498,6 +561,9 @@ const LiveScoringPage: React.FC = () => {
           >
             📊
           </button>
+        </div>
+        <div className={`text-center text-xs mt-1 ${saveStatusClassName}`}>
+          {saveStatusLabel}
         </div>
       </div>
 
@@ -576,25 +642,32 @@ const LiveScoringPage: React.FC = () => {
 
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
-                {activeInnings.totalBalls > 0 ? ((activeInnings.totalRuns / activeInnings.totalBalls) * 6).toFixed(2) : '0.00'}
+                {currentRunRate}
               </span>
-              <span className="text-sm text-white/70 ml-1">RR</span>
+              <span className="text-sm text-white/70 ml-1">
+                {activeInnings.target ? 'CRR' : 'RR'}
+              </span>
             </div>
+
+            {activeInnings.target && (
+              <>
+                <div className="w-1 h-1 bg-white/50 rounded-full"></div>
+
+                <div className="text-center">
+                  <span className="text-lg font-semibold text-white/90">
+                    {requiredRunRate}
+                  </span>
+                  <span className="text-sm text-white/70 ml-1">RRR</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Target Info - Mobile Compact */}
           {activeInnings.target && (
             <div className="text-center">
               <div className="text-sm text-white/90">
-                Need <span className="font-bold">{activeInnings.target - activeInnings.totalRuns}</span> from <span className="font-bold">{(activeMatch.overs * 6) - activeInnings.totalBalls}</span> balls
-                <br className="block sm:hidden" />
-                <span className="ml-2 text-white/80">
-                  RRR: {
-                    ((activeMatch.overs * 6) - activeInnings.totalBalls) > 0 ?
-                      (((activeInnings.target - activeInnings.totalRuns) / (((activeMatch.overs * 6) - activeInnings.totalBalls) / 6)).toFixed(1)) :
-                      '0.0'
-                  }
-                </span>
+                Need <span className="font-bold">{runsNeeded}</span> from <span className="font-bold">{ballsRemaining}</span> balls
               </div>
             </div>
           )}
@@ -680,7 +753,7 @@ const LiveScoringPage: React.FC = () => {
                     {activeBowler.wickets}-{activeBowler.runs}
                   </span>
                   <span>
-                    {Math.floor(activeBowler.balls / 6)}.{activeBowler.balls % 6}
+                    {formatBallsAsOvers(activeBowler.balls)}
                   </span>
                   <span>Eco: {activeBowler.balls > 0 ? ((activeBowler.runs / activeBowler.balls) * 6).toFixed(2) : '0.00'}</span>
                 </div>
@@ -722,7 +795,21 @@ const LiveScoringPage: React.FC = () => {
           return (
             <div className="bg-green-600 text-white px-4 py-6 text-center flex-shrink-0">
               <div className="text-xl font-bold mb-2">🏆 Match Completed!</div>
-              <div className="text-sm">Redirecting to winner page...</div>
+              <div className="text-sm mb-4">Review the final ball or undo it before seeing the result.</div>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => useMatchStore.getState().undoLastBall()}
+                  className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm font-semibold"
+                >
+                  Undo Last Ball
+                </button>
+                <button
+                  onClick={() => navigate('/winner')}
+                  className="px-4 py-2 rounded-lg bg-white text-green-700 hover:bg-green-50 text-sm font-semibold"
+                >
+                  View Result
+                </button>
+              </div>
             </div>
           );
         }
@@ -740,8 +827,24 @@ const LiveScoringPage: React.FC = () => {
           return (
             <div className="bg-blue-600 text-white px-4 py-6 text-center flex-shrink-0">
               <div className="text-lg font-bold mb-2">{message}</div>
-              <div className="text-sm">
-                {isFirstInnings ? 'Moving to innings break...' : 'Moving to results...'}
+              <div className="text-sm mb-4">
+                {isFirstInnings
+                  ? 'Confirm the innings break or undo the last ball.'
+                  : 'Review the final ball or undo it before opening the result.'}
+              </div>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => useMatchStore.getState().undoLastBall()}
+                  className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm font-semibold"
+                >
+                  Undo Last Ball
+                </button>
+                <button
+                  onClick={() => navigate(isFirstInnings ? '/innings-break' : '/winner')}
+                  className="px-4 py-2 rounded-lg bg-white text-blue-700 hover:bg-blue-50 text-sm font-semibold"
+                >
+                  {isFirstInnings ? 'Continue' : 'View Result'}
+                </button>
               </div>
             </div>
           );
@@ -883,27 +986,66 @@ const LiveScoringPage: React.FC = () => {
       {isWicketModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-4 text-center">How was the batsman out?</h3>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {[
-                'Bowled', 'Caught', 'LBW', 'Stumped',
-                'Run Out', 'Hit Wicket', 'Retired', 'Other'
-              ].map(type => (
+            {pendingWicketType ? (
+              <>
+                <h3 className="text-lg font-bold mb-2 text-center">{fielderPrompt.title}</h3>
+                <p className="text-sm text-gray-600 text-center mb-4">
+                  {fielderPrompt.description}
+                </p>
+                <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                  {getAvailableFielders().map(player => (
+                    <button
+                      key={player.id}
+                      onClick={() => confirmWicket(pendingWicketType, player.id)}
+                      className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <div className="font-medium">
+                        {player.name}
+                        {isJokerPlayerId(player.id) && <span className="ml-2">🃏</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPendingWicketType(null)}
+                    className="py-3 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={closeWicketModal}
+                    className="py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold mb-4 text-center">How was the batsman out?</h3>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {[
+                    'Bowled', 'Caught', 'LBW', 'Stumped',
+                    'Run Out', 'Hit Wicket', 'Retired', 'Other'
+                  ].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => handleWicketTypeSelection(type.toLowerCase().replace(' ', ''))}
+                      className="py-3 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
                 <button
-                  key={type}
-                  onClick={() => confirmWicket(type.toLowerCase().replace(' ', ''))}
-                  className="py-3 text-sm font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  onClick={closeWicketModal}
+                  className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                 >
-                  {type}
+                  Cancel
                 </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsWicketModalOpen(false)}
-              className="w-full py-3 text-sm font-medium bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-            >
-              Cancel
-            </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -916,6 +1058,7 @@ const LiveScoringPage: React.FC = () => {
             <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
               {getAllBowlersWithStatus().map(({ player, status, isDisabled }) => {
                 const isJoker = activeMatch.hasJoker && player.name === activeMatch.jokerName;
+                const oversBowled = getBowlerOversBowled(player.id);
                 return (
                   <button
                     key={player.id}
@@ -927,9 +1070,14 @@ const LiveScoringPage: React.FC = () => {
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="font-medium">
-                        {player.name}
-                        {isJoker && <span className="ml-2">🃏</span>}
+                      <div>
+                        <div className="font-medium">
+                          {player.name}
+                          {isJoker && <span className="ml-2">🃏</span>}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Bowled: {oversBowled} ov
+                        </div>
                       </div>
                       {status && (
                         <span className="text-xs text-gray-500 italic">{status}</span>
@@ -957,15 +1105,21 @@ const LiveScoringPage: React.FC = () => {
             <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
               {getAvailableBatsmen().map(player => {
                 const isJoker = activeMatch.hasJoker && player.name === activeMatch.jokerName;
+                const oversPlayed = getBatsmanOversPlayed(player.id);
                 return (
                   <button
                     key={player.id}
                     onClick={() => handleBatsmanChange(player.id)}
                     className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    <div className="font-medium">
-                      {player.name}
-                      {isJoker && <span className="ml-2">🃏</span>}
+                    <div>
+                      <div className="font-medium">
+                        {player.name}
+                        {isJoker && <span className="ml-2">🃏</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Batted: {oversPlayed} ov
+                      </div>
                     </div>
                   </button>
                 );

@@ -27,6 +27,7 @@ export interface Ball {
   extras: { type: 'wide' | 'noball' | 'bye' | 'legbye'; runs: number } | null;
   wicket: boolean;
   wicketType?: WicketType;
+  fielderId?: string;
   batsmanId?: string;
   bowlerId: string;
   overNumber: number;

@@ -700,65 +700,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       isCompleted: true,
     };
 
-    // If this is the first innings, start second innings
+    // If this is the first innings, hold at the innings break until players are chosen
     if (state.currentInnings.number === 1) {
-      const secondInnings: Innings = {
-        number: 2,
-        battingTeamId: state.currentInnings.bowlingTeamId,
-        bowlingTeamId: state.currentInnings.battingTeamId,
-        overs: [],
-        totalRuns: 0,
-        totalWickets: 0,
-        totalBalls: 0,
-        currentBatsmanIds: state.match.isSingleSide
-          ? state.match.teams[1].players[0].id
-          : [state.match.teams[1].players[0].id, state.match.teams[1].players[1].id],
-        isCompleted: false,
-        target: updatedInnings.totalRuns + 1,
-      };
-
       const updatedMatch = {
         ...state.match,
         currentInning: 2,
-        innings: [updatedInnings, secondInnings],
+        innings: [updatedInnings],
       };
-
-      const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
-        ? {
-          playerId: state.match.teams[1].players[0].id,
-          runs: 0,
-          balls: 0,
-          fours: 0,
-          sixes: 0,
-          strikeRate: 0,
-          isOut: false,
-        }
-        : [
-          {
-            playerId: state.match.teams[1].players[0].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-          {
-            playerId: state.match.teams[1].players[1].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-        ];
 
       set({
         match: updatedMatch,
-        currentInnings: secondInnings,
-        currentOver: null,
-        currentBatsmen,
+        currentInnings: updatedInnings,
       });
 
       syncActiveMatchPersistence(updatedMatch, state.firebaseDocId);
@@ -1227,65 +1179,17 @@ export const useMatchStore = create<MatchStore>((set, get) => ({
       isCompleted: true,
     };
 
-    // If this is the first innings, start second innings
+    // If this is the first innings, hold at the innings break until players are chosen
     if (state.currentInnings.number === 1) {
-      const secondInnings: Innings = {
-        number: 2,
-        battingTeamId: state.currentInnings.bowlingTeamId,
-        bowlingTeamId: state.currentInnings.battingTeamId,
-        overs: [],
-        totalRuns: 0,
-        totalWickets: 0,
-        totalBalls: 0,
-        currentBatsmanIds: state.match.isSingleSide
-          ? state.match.teams[1].players[0].id
-          : [state.match.teams[1].players[0].id, state.match.teams[1].players[1].id],
-        isCompleted: false,
-        target: updatedInnings.totalRuns + 1,
-      };
-
       const updatedMatch = {
         ...state.match,
         currentInning: 2,
-        innings: [updatedInnings, secondInnings],
+        innings: [updatedInnings],
       };
-
-      const currentBatsmen: BatsmanStats | [BatsmanStats, BatsmanStats] = state.match.isSingleSide
-        ? {
-          playerId: state.match.teams[1].players[0].id,
-          runs: 0,
-          balls: 0,
-          fours: 0,
-          sixes: 0,
-          strikeRate: 0,
-          isOut: false,
-        }
-        : [
-          {
-            playerId: state.match.teams[1].players[0].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-          {
-            playerId: state.match.teams[1].players[1].id,
-            runs: 0,
-            balls: 0,
-            fours: 0,
-            sixes: 0,
-            strikeRate: 0,
-            isOut: false,
-          },
-        ];
 
       set({
         match: updatedMatch,
-        currentInnings: secondInnings,
-        currentOver: null,
-        currentBatsmen,
+        currentInnings: updatedInnings,
       });
 
       syncActiveMatchPersistence(updatedMatch, state.firebaseDocId);

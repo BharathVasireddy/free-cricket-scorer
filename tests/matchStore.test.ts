@@ -748,6 +748,37 @@ describe('matchStore edge cases', () => {
     expect(state.currentOver?.balls).toHaveLength(5);
   });
 
+  it('keeps the completed first innings active for confirmation when ending early, and undo still works', async () => {
+    await createMatch({ playersPerTeam: 4, overs: 2, isSingleSide: false });
+
+    scoreLegalBall(2);
+    useMatchStore.getState().endInningsEarly();
+
+    let state = useMatchStore.getState();
+    expect(state.match?.currentInning).toBe(2);
+    expect(state.match?.innings).toHaveLength(1);
+    expect(state.currentInnings?.number).toBe(1);
+    expect(state.currentInnings?.isCompleted).toBe(true);
+    expect(Array.isArray(state.currentBatsmen)).toBe(true);
+    expect((state.currentBatsmen as [BatsmanStats, BatsmanStats])[0].playerId).toBe('team1_player_1');
+
+    useMatchStore.getState().undoLastBall();
+
+    state = useMatchStore.getState();
+    expect(state.match?.currentInning).toBe(1);
+    expect(state.match?.innings).toHaveLength(1);
+    expect(state.match?.status).toBe('active');
+    expect(state.currentInnings?.number).toBe(1);
+    expect(state.currentInnings?.isCompleted).toBe(false);
+    expect(state.currentInnings?.totalRuns).toBe(0);
+    expect(state.currentInnings?.totalBalls).toBe(0);
+    expect(state.currentOver).toMatchObject({
+      number: 1,
+      completed: false,
+    });
+    expect(state.currentOver?.balls).toHaveLength(0);
+  });
+
   it('reopens the chase when undoing a winning ball in the second innings', async () => {
     await createMatch({ playersPerTeam: 4, overs: 2, isSingleSide: false });
 

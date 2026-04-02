@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { Settings, LogOut, User, Mail, Trophy, History, Bell, HelpCircle, Users } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
@@ -8,10 +8,8 @@ const ProfilePage: React.FC = () => {
   const { currentUser, logout } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/landing');
-    } catch (error) {    }
+    await logout();
+    navigate('/landing');
   };
 
   const getUserName = () => {

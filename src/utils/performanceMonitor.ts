@@ -26,11 +26,11 @@ class PerformanceMonitor {
     metric.endTime = endTime;
     metric.duration = duration;
 
-    this.logResult(operationName, duration);
+    this.logResult();
     return duration;
   }
 
-  private logResult(_operationName: string, _duration: number): void {
+  private logResult(): void {
     // Performance logging removed for production
   }
 
@@ -64,9 +64,9 @@ class PerformanceMonitor {
     const avgUserMatches = this.getAverageTime('getUserMatches');
     const avgCommunityMatches = this.getAverageTime('getCommunityMatches');
 
-    if (avgConnection > 0) { }
-    if (avgUserMatches > 0) { }
-    if (avgCommunityMatches > 0) { }
+    void avgConnection;
+    void avgUserMatches;
+    void avgCommunityMatches;
   }
 
   clear(): void {

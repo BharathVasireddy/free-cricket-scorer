@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { Users, Plus, Edit2, Trash2, ArrowLeft } from 'lucide-react';
 import { getUserRoster, savePlayerToRoster, updatePlayerInRoster, deletePlayerFromRoster } from '../lib/playerRosterService';
 import type { SavedPlayer } from '../types';
@@ -20,21 +20,27 @@ const PlayerRosterPage: React.FC = () => {
     const [newPlayerRole, setNewPlayerRole] = useState<'batsman' | 'bowler' | 'allrounder'>('allrounder');
 
     // Load roster on mount
-    useEffect(() => {
-        loadRoster();
-    }, [currentUser]);
-
-    const loadRoster = async () => {
-        if (!currentUser) return;
+    const loadRoster = useCallback(async () => {
+        if (!currentUser) {
+            setRoster([]);
+            setIsLoadingRoster(false);
+            return;
+        }
 
         setIsLoadingRoster(true);
         try {
             const userRoster = await getUserRoster(currentUser.uid);
             setRoster(userRoster?.players || []);
-        } catch (error) {        } finally {
+        } catch {
+            setRoster([]);
+        } finally {
             setIsLoadingRoster(false);
         }
-    };
+    }, [currentUser]);
+
+    useEffect(() => {
+        void loadRoster();
+    }, [loadRoster]);
 
     const validatePhoneNumber = (phone: string): boolean => {
         if (!phone.trim()) return true; // Optional field
@@ -61,7 +67,8 @@ const PlayerRosterPage: React.FC = () => {
             setNewPlayerRole('allrounder');
             setIsAddPlayerModalOpen(false);
             await loadRoster();
-        } catch (error) {            alert('Failed to add player. Please try again.');
+        } catch {
+            alert('Failed to add player. Please try again.');
         }
     };
 
@@ -85,7 +92,8 @@ const PlayerRosterPage: React.FC = () => {
             setNewPlayerRole('allrounder');
             setIsEditPlayerModalOpen(false);
             await loadRoster();
-        } catch (error) {            alert('Failed to update player. Please try again.');
+        } catch {
+            alert('Failed to update player. Please try again.');
         }
     };
 
@@ -97,7 +105,8 @@ const PlayerRosterPage: React.FC = () => {
         try {
             await deletePlayerFromRoster(currentUser.uid, playerId);
             await loadRoster();
-        } catch (error) {            alert('Failed to delete player. Please try again.');
+        } catch {
+            alert('Failed to delete player. Please try again.');
         }
     };
 
@@ -265,7 +274,7 @@ const PlayerRosterPage: React.FC = () => {
                                 </label>
                                 <select
                                     value={newPlayerRole}
-                                    onChange={(e) => setNewPlayerRole(e.target.value as any)}
+                                    onChange={(e) => setNewPlayerRole(e.target.value as NonNullable<SavedPlayer['role']>)}
                                     className="input-field w-full"
                                 >
                                     <option value="allrounder">All-rounder</option>
@@ -340,7 +349,7 @@ const PlayerRosterPage: React.FC = () => {
                                 </label>
                                 <select
                                     value={newPlayerRole}
-                                    onChange={(e) => setNewPlayerRole(e.target.value as any)}
+                                    onChange={(e) => setNewPlayerRole(e.target.value as NonNullable<SavedPlayer['role']>)}
                                     className="input-field w-full"
                                 >
                                     <option value="allrounder">All-rounder</option>

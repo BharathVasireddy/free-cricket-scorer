@@ -1,7 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { lazy, Suspense } from 'react';
+import { AuthProvider } from './contexts/AuthContext';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import BottomNav from './components/navigation/BottomNav';
+import { useAuth } from './contexts/useAuth';
+import { useMatchStore } from './store/matchStore';
+import { clearStoredActiveMatch, getStoredActiveMatch } from './lib/activeMatchStorage';
+import { getMatchById } from './lib/matchService';
 
 // Lazy load page components
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -28,6 +32,78 @@ const LoadingSpinner = () => (
     </div>
   </div>
 );
+
+const MATCH_RECOVERY_PATHS = new Set([
+  '/toss',
+  '/players',
+  '/innings-break',
+  '/players-second',
+  '/live',
+  '/scorecard',
+]);
+
+const MatchRecoveryGate = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const { currentUser, isLoading } = useAuth();
+  const match = useMatchStore(state => state.match);
+  const loadMatch = useMatchStore(state => state.loadMatch);
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const recoverMatch = async () => {
+      if (isLoading || !currentUser || match || !MATCH_RECOVERY_PATHS.has(location.pathname)) {
+        return;
+      }
+
+      const storedActiveMatch = getStoredActiveMatch();
+      if (!storedActiveMatch) {
+        return;
+      }
+
+      if (storedActiveMatch.userId && storedActiveMatch.userId !== currentUser.uid) {
+        clearStoredActiveMatch();
+        return;
+      }
+
+      setIsRecovering(true);
+
+      try {
+        const savedMatch = await getMatchById(storedActiveMatch.matchId);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (!savedMatch || savedMatch.status === 'completed') {
+          clearStoredActiveMatch();
+          return;
+        }
+
+        loadMatch(savedMatch);
+      } catch {
+        // Keep the stored reference so the user can retry after a transient network issue.
+      } finally {
+        if (!isCancelled) {
+          setIsRecovering(false);
+        }
+      }
+    };
+
+    void recoverMatch();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser, isLoading, loadMatch, location.pathname, match]);
+
+  if (isRecovering) {
+    return <LoadingSpinner />;
+  }
+
+  return <>{children}</>;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -88,9 +164,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Layout>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
+        <MatchRecoveryGate>
+          <Layout>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
               {/* Root route - smart redirect */}
               <Route path="/" element={<RootRoute />} />
 
@@ -168,9 +245,10 @@ function App() {
                   <PlayerRosterPage />
                 </ProtectedRoute>
               } />
-            </Routes>
-          </Suspense>
-        </Layout>
+              </Routes>
+            </Suspense>
+          </Layout>
+        </MatchRecoveryGate>
       </Router>
     </AuthProvider>
   );

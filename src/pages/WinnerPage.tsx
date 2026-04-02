@@ -9,16 +9,18 @@ const WinnerPage: React.FC = () => {
   const [matchCode, setMatchCode] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>('');
+  const isCompletedMatch = Boolean(match && match.status === 'completed');
 
-  if (!match || match.status !== 'completed') {
-    navigate('/setup');
-    return null;
-  }
+  useEffect(() => {
+    if (!isCompletedMatch) {
+      navigate('/setup');
+    }
+  }, [isCompletedMatch, navigate]);
 
   // Auto-save match to Firebase when component loads
   useEffect(() => {
     const saveMatchData = async () => {
-      if (match && !matchCode && !isSaving) {
+      if (match && isCompletedMatch && !matchCode && !isSaving) {
         setIsSaving(true);
         try {
           // Get userId from match data - it should be set when match was created
@@ -27,15 +29,21 @@ const WinnerPage: React.FC = () => {
             throw new Error('No user ID found - match cannot be saved');
           }
           const code = await saveMatch(match, userId);
-          setMatchCode(code);        } catch (error) {          setSaveError('Failed to save match to cloud');
+          setMatchCode(code);
+        } catch {
+          setSaveError('Failed to save match to cloud');
         } finally {
           setIsSaving(false);
         }
       }
     };
 
-    saveMatchData();
-  }, [match, matchCode, isSaving]);
+    void saveMatchData();
+  }, [isCompletedMatch, match, matchCode, isSaving]);
+
+  if (!match || !isCompletedMatch) {
+    return null;
+  }
 
   const firstInnings = match.innings[0];
   const secondInnings = match.innings[1];
@@ -53,7 +61,7 @@ ${firstInnings.totalRuns}/${firstInnings.totalWickets} (${Math.floor(firstInning
           title: 'Cricket Match Result',
           text: matchSummary,
         });
-      } catch (error) {
+      } catch {
         // Fall back to clipboard if sharing fails
         await navigator.clipboard.writeText(matchSummary);
         alert('Match result copied to clipboard!');

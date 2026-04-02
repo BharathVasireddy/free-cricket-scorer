@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { getUserMatches } from '../lib/matchService';
 import type { FirebaseMatch } from '../types';
 import { useMatchStore } from '../store/matchStore';
@@ -19,11 +19,7 @@ const WelcomePage: React.FC = () => {
     }
   }, [currentUser, isLoading, navigate]);
 
-  useEffect(() => {
-    loadRecentMatches();
-  }, [currentUser]);
-
-  const loadRecentMatches = async () => {
+  const loadRecentMatches = useCallback(async () => {
     if (!currentUser) {
       setMatchesLoading(false);
       return;
@@ -38,16 +34,24 @@ const WelcomePage: React.FC = () => {
       );
 
       setRecentMatches(uniqueMatches.slice(0, 3)); // Show only 3 most recent
-    } catch (error) {    } finally {
+    } catch {
+      setRecentMatches([]);
+    } finally {
       setMatchesLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    void loadRecentMatches();
+  }, [loadRecentMatches]);
 
   const handleLogout = async () => {
     try {
       await logout();
       navigate('/landing');
-    } catch (error) {    }
+    } catch {
+      // Keep the current screen if logout fails.
+    }
   };
 
   const formatMatchScore = (match: FirebaseMatch) => {

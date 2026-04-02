@@ -31,7 +31,7 @@ const ScorecardPage: React.FC = () => {
   // Function to get batting stats for an innings
   const getBattingStats = (innings: Innings) => {
     const battingTeam = match.teams.find(t => t.id === innings.battingTeamId);
-    let allBatsmen = [...(battingTeam?.players || [])];
+    const allBatsmen = [...(battingTeam?.players || [])];
 
     // Check if joker has batted and add them if they're not in the team
     const jokerBatted = match.hasJoker && match.jokerName &&
@@ -39,15 +39,15 @@ const ScorecardPage: React.FC = () => {
         over.balls.some(ball => ball.batsmanId?.includes('joker'))
       );
 
-    if (jokerBatted && !allBatsmen.some(p => p.name === match.jokerName)) {
-      allBatsmen.push({
+    const battingLineup = jokerBatted && !allBatsmen.some(p => p.name === match.jokerName)
+      ? [...allBatsmen, {
         id: 'joker',
         name: match.jokerName!,
         role: 'allrounder' as const
-      });
-    }
+      }]
+      : allBatsmen;
 
-    return allBatsmen.map(player => {
+    return battingLineup.map(player => {
       let runs = 0, balls = 0, fours = 0, sixes = 0, isOut = false, dismissalType = '';
 
       innings.overs.forEach(over => {

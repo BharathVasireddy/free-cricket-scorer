@@ -1,7 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useMatchStore } from '../store/matchStore';
 import { useNavigate } from 'react-router-dom';
-import type { Ball } from '../types';
+import type { Ball, BatsmanStats } from '../types';
+
+const normalizeWicketType = (value: string): Ball['wicketType'] => {
+  switch (value.toLowerCase().replace(/\s+/g, '')) {
+    case 'bowled':
+      return 'bowled';
+    case 'caught':
+      return 'caught';
+    case 'lbw':
+      return 'lbw';
+    case 'stumped':
+      return 'stumped';
+    case 'runout':
+      return 'runout';
+    case 'hitwicket':
+      return 'hitwicket';
+    default:
+      return 'out';
+  }
+};
 
 const LiveScoringPage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,32 +80,23 @@ const LiveScoringPage: React.FC = () => {
     }
   }, [currentInnings?.isCompleted, currentInnings?.number, navigate]);
 
-  if (!match || !currentInnings || !currentBatsmen || !currentBowler) {
-    return (
-      <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">No active match found</p>
-          <button
-            onClick={() => navigate('/setup')}
-            className="btn-primary"
-          >
-            Start New Match
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const battingTeam = match.teams.find(t => t.id === currentInnings.battingTeamId);
-  const bowlingTeam = match.teams.find(t => t.id === currentInnings.bowlingTeamId);
-  const currentBowlerPlayer = bowlingTeam?.players.find(p => p.id === currentBowler.playerId);
+  const hasRequiredMatchState = Boolean(match && currentInnings && currentBatsmen && currentBowler);
+  const battingTeam = match?.teams.find(t => t.id === currentInnings?.battingTeamId);
+  const bowlingTeam = match?.teams.find(t => t.id === currentInnings?.bowlingTeamId);
+  const currentBowlerPlayer = bowlingTeam?.players.find(p => p.id === currentBowler?.playerId);
+  const jokerPlayerId = battingTeam ? `joker-${battingTeam.id}` : 'joker';
 
   // Handle both single batsman and pair of batsmen
   // Check if we're in single batting mode (either from start or switched during match)
-  const isCurrentlySingleBatting = match.isSingleSide || !Array.isArray(currentBatsmen);
-  const batsmen = isCurrentlySingleBatting
-    ? [currentBatsmen as any]
-    : currentBatsmen as [any, any];
+  const isCurrentlySingleBatting = Boolean(match?.isSingleSide || !Array.isArray(currentBatsmen));
+  const batsmen: BatsmanStats[] = Array.isArray(currentBatsmen)
+    ? currentBatsmen
+    : currentBatsmen
+      ? [currentBatsmen]
+      : [];
+  const activeMatch = match as NonNullable<typeof match>;
+  const activeInnings = currentInnings as NonNullable<typeof currentInnings>;
+  const activeBowler = currentBowler as NonNullable<typeof currentBowler>;
 
   // Animation trigger function
   const triggerAnimation = (type: 'four' | 'six' | 'wicket') => {
@@ -100,7 +110,14 @@ const LiveScoringPage: React.FC = () => {
     }, 1500); // Shorter celebration time
   };
 
+  useEffect(() => {
+    if (batsmen.length > 0 && selectedBatsmanIndex >= batsmen.length) {
+      setSelectedBatsmanIndex(0);
+    }
+  }, [batsmen.length, selectedBatsmanIndex]);
+
   const handleScoreButton = (runs: number) => {
+    if (!currentBowler) return;
     const currentBatsman = batsmen[selectedBatsmanIndex];
 
     // CRITICAL: Prevent scoring if batsman is out
@@ -178,9 +195,9 @@ const LiveScoringPage: React.FC = () => {
       runs: 0,
       extras: null,
       wicket: true,
-      wicketType: wicketType as any,
+      wicketType: normalizeWicketType(wicketType),
       batsmanId: batsmen[selectedBatsmanIndex].playerId,
-      bowlerId: currentBowler.playerId,
+      bowlerId: activeBowler.playerId,
     });
     setIsWicketModalOpen(false);
 
@@ -191,9 +208,9 @@ const LiveScoringPage: React.FC = () => {
     setTimeout(() => {
       const availableBatsmen = getAvailableBatsmen();
       // For both single-side and standard batting, check if new batsman needed
-      if (availableBatsmen.length > 0 && !currentInnings.isCompleted) {
+      if (availableBatsmen.length > 0 && !activeInnings.isCompleted) {
         setIsBatsmanModalOpen(true);
-      } else { }
+      }
     }, 1200); // Delay to ensure state update
   };
 
@@ -218,7 +235,7 @@ const LiveScoringPage: React.FC = () => {
     const outBatsmenIds = new Set<string>();
 
     // Check each over for wickets to find out batsmen
-    currentInnings.overs.forEach(over => {
+    activeInnings.overs.forEach(over => {
       over.balls.forEach(ball => {
         if (ball.wicket && ball.batsmanId) {
           outBatsmenIds.add(ball.batsmanId);
@@ -226,45 +243,43 @@ const LiveScoringPage: React.FC = () => {
       });
     });
     // Get team players
-    let availablePlayers = battingTeam?.players.filter(player =>
+    const availablePlayers = [...(battingTeam?.players.filter(player =>
       !currentBatsmanIds.includes(player.id) && !outBatsmenIds.has(player.id)
-    ) || [];
+    ) || [])];
 
     // Add joker if available for both teams
-    if (match.hasJoker && match.jokerName) {
-      // Check if joker is already out
-      const jokerOutInTeamA = outBatsmenIds.has('joker-teamA');
-      const jokerOutInTeamB = outBatsmenIds.has('joker-teamB');
-
-      // Check if joker is currently batting
-      const jokerCurrentlyBatting = currentBatsmanIds.includes('joker-teamA') || currentBatsmanIds.includes('joker-teamB');
+    if (activeMatch.hasJoker && activeMatch.jokerName) {
+      const jokerOut = outBatsmenIds.has(jokerPlayerId);
+      const jokerCurrentlyBatting = currentBatsmanIds.includes(jokerPlayerId);
 
       // If joker not out and not currently batting, add to available
-      if (!jokerOutInTeamA && !jokerOutInTeamB && !jokerCurrentlyBatting) {
+      if (!jokerOut && !jokerCurrentlyBatting) {
         // Add virtual joker player
         availablePlayers.push({
-          id: `joker-${battingTeam?.name.toLowerCase().replace(/\s+/g, '')}`,
-          name: match.jokerName,
+          id: jokerPlayerId,
+          name: activeMatch.jokerName,
           role: 'allrounder' as const
         });
-      } else { }
-    } return availablePlayers;
+      }
+    }
+
+    return availablePlayers;
   };
 
   // Get all bowlers with their status
   const getAllBowlersWithStatus = () => {
     // Check if we're mid-over (current over exists and has balls but isn't completed)
-    const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
+    const currentOver = activeInnings.overs[activeInnings.overs.length - 1];
     const isMidOver = currentOver && !currentOver.completed;
 
     // Get the last COMPLETED over's bowler
     let lastCompletedOverBowlerId = null;
-    if (isMidOver && currentInnings.overs.length > 1) {
+    if (isMidOver && activeInnings.overs.length > 1) {
       // If mid-over, get the second-to-last over (last completed)
-      lastCompletedOverBowlerId = currentInnings.overs[currentInnings.overs.length - 2]?.bowlerId;
-    } else if (!isMidOver && currentInnings.overs.length > 0) {
+      lastCompletedOverBowlerId = activeInnings.overs[activeInnings.overs.length - 2]?.bowlerId;
+    } else if (!isMidOver && activeInnings.overs.length > 0) {
       // If over just completed, get the last over
-      lastCompletedOverBowlerId = currentInnings.overs[currentInnings.overs.length - 1]?.bowlerId;
+      lastCompletedOverBowlerId = activeInnings.overs[activeInnings.overs.length - 1]?.bowlerId;
     }
 
     return bowlingTeam?.players.map(player => {
@@ -282,7 +297,7 @@ const LiveScoringPage: React.FC = () => {
   };
 
   const getCurrentOver = () => {
-    const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
+    const currentOver = activeInnings.overs[activeInnings.overs.length - 1];
     if (!currentOver || currentOver.balls.length === 0) return [];
 
     return currentOver.balls.map((ball, index) => {
@@ -325,17 +340,22 @@ const LiveScoringPage: React.FC = () => {
 
 
 
-  const currentOver = currentInnings.overs[currentInnings.overs.length - 1];
+  const currentOver = currentInnings?.overs[currentInnings.overs.length - 1] ?? null;
   const ballsThisOver = currentOver?.balls.filter(
     b => !b.extras || (b.extras.type !== 'wide' && b.extras.type !== 'noball')
   ).length || 0;
 
   // Over is complete if we have 6 valid balls AND there's a current over AND the current bowler matches
-  const isOverComplete = ballsThisOver >= 6 && currentOver && currentOver.bowlerId === currentBowler.playerId;
+  const isOverComplete = Boolean(
+    currentOver &&
+    currentBowler &&
+    ballsThisOver >= 6 &&
+    currentOver.bowlerId === currentBowler?.playerId
+  );
 
   // Check if match overs are complete
-  const totalOversCompleted = Math.floor(currentInnings.totalBalls / 6);
-  const isMatchComplete = totalOversCompleted >= match.overs;
+  const totalOversCompleted = currentInnings ? Math.floor(currentInnings.totalBalls / 6) : 0;
+  const isMatchComplete = Boolean(match && totalOversCompleted >= match.overs);
 
   // Disable scoring if over is complete OR match is complete
   const shouldDisableScoring = isOverComplete || isMatchComplete;
@@ -369,7 +389,7 @@ const LiveScoringPage: React.FC = () => {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [currentInnings?.isCompleted, currentInnings?.number, navigate]);
+  }, [currentInnings, match, navigate]);
 
   // Handle match completion and navigate to winner page
   useEffect(() => {
@@ -393,6 +413,22 @@ const LiveScoringPage: React.FC = () => {
     }
   }, [currentBatsmen, match, currentInnings, isLastManStanding, isLastManModalOpen]);
 
+  if (!hasRequiredMatchState) {
+    return (
+      <div className="h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">No active match found</p>
+          <button
+            onClick={() => navigate('/setup')}
+            className="btn-primary"
+          >
+            Start New Match
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Compact Header - Mobile Optimized */}
@@ -408,7 +444,7 @@ const LiveScoringPage: React.FC = () => {
             <h1 className="text-base font-bold text-gray-900">Live Match</h1>
             <div className="text-xs text-gray-600">
               {isCurrentlySingleBatting ? (
-                match.isSingleSide ? 'Single Side' : 'Last Man'
+                activeMatch.isSingleSide ? 'Single Side' : 'Last Man'
               ) : (
                 'Standard'
               )}
@@ -479,7 +515,7 @@ const LiveScoringPage: React.FC = () => {
             </div>
             <div className={`text-4xl font-black text-white transition-all duration-300 ${!isAnimating && animationType ? 'animate-pulse' : ''
               }`}>
-              {currentInnings.totalRuns}/{currentInnings.totalWickets}
+              {activeInnings.totalRuns}/{activeInnings.totalWickets}
             </div>
           </div>
 
@@ -487,10 +523,10 @@ const LiveScoringPage: React.FC = () => {
           <div className="flex justify-center items-center space-x-4 mb-2">
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
-                {Math.floor(currentInnings.totalBalls / 6)}.{currentInnings.totalBalls % 6}
+                {Math.floor(activeInnings.totalBalls / 6)}.{activeInnings.totalBalls % 6}
               </span>
               <span className="text-sm text-white/70 ml-1">
-                /{match.overs}
+                /{activeMatch.overs}
               </span>
             </div>
 
@@ -498,22 +534,22 @@ const LiveScoringPage: React.FC = () => {
 
             <div className="text-center">
               <span className="text-lg font-semibold text-white/90">
-                {currentInnings.totalBalls > 0 ? ((currentInnings.totalRuns / currentInnings.totalBalls) * 6).toFixed(2) : '0.00'}
+                {activeInnings.totalBalls > 0 ? ((activeInnings.totalRuns / activeInnings.totalBalls) * 6).toFixed(2) : '0.00'}
               </span>
               <span className="text-sm text-white/70 ml-1">RR</span>
             </div>
           </div>
 
           {/* Target Info - Mobile Compact */}
-          {currentInnings.target && (
+          {activeInnings.target && (
             <div className="text-center">
               <div className="text-sm text-white/90">
-                Need <span className="font-bold">{currentInnings.target - currentInnings.totalRuns}</span> from <span className="font-bold">{(match.overs * 6) - currentInnings.totalBalls}</span> balls
+                Need <span className="font-bold">{activeInnings.target - activeInnings.totalRuns}</span> from <span className="font-bold">{(activeMatch.overs * 6) - activeInnings.totalBalls}</span> balls
                 <br className="block sm:hidden" />
                 <span className="ml-2 text-white/80">
                   RRR: {
-                    ((match.overs * 6) - currentInnings.totalBalls) > 0 ?
-                      (((currentInnings.target - currentInnings.totalRuns) / (((match.overs * 6) - currentInnings.totalBalls) / 6)).toFixed(1)) :
+                    ((activeMatch.overs * 6) - activeInnings.totalBalls) > 0 ?
+                      (((activeInnings.target - activeInnings.totalRuns) / (((activeMatch.overs * 6) - activeInnings.totalBalls) / 6)).toFixed(1)) :
                       '0.0'
                   }
                 </span>
@@ -540,7 +576,7 @@ const LiveScoringPage: React.FC = () => {
             <div className="space-y-2">
               {batsmen.map((batsman, index) => {
                 const player = battingTeam?.players.find(p => p.id === batsman.playerId);
-                const isJoker = match.hasJoker && player?.name === match.jokerName;
+                const isJoker = activeMatch.hasJoker && player?.name === activeMatch.jokerName;
                 const isOnStrike = selectedBatsmanIndex === index;
                 const showStrike = !isCurrentlySingleBatting;
                 const strikeRate = batsman.balls > 0 ? ((batsman.runs / batsman.balls) * 100).toFixed(1) : '0.0';
@@ -593,18 +629,18 @@ const LiveScoringPage: React.FC = () => {
               <div>
                 <div className="font-semibold text-gray-900 text-sm">
                   {currentBowlerPlayer?.name}
-                  {match.hasJoker && currentBowlerPlayer?.name === match.jokerName && (
+                  {activeMatch.hasJoker && currentBowlerPlayer?.name === activeMatch.jokerName && (
                     <span className="ml-1">🃏</span>
                   )}
                 </div>
                 <div className="text-xs text-gray-600 mt-1 space-x-4">
                   <span>
-                    {currentBowler.wickets}-{currentBowler.runs}
+                    {activeBowler.wickets}-{activeBowler.runs}
                   </span>
                   <span>
-                    {Math.floor(currentBowler.balls / 6)}.{currentBowler.balls % 6}
+                    {Math.floor(activeBowler.balls / 6)}.{activeBowler.balls % 6}
                   </span>
-                  <span>Eco: {currentBowler.balls > 0 ? ((currentBowler.runs / currentBowler.balls) * 6).toFixed(2) : '0.00'}</span>
+                  <span>Eco: {activeBowler.balls > 0 ? ((activeBowler.runs / activeBowler.balls) * 6).toFixed(2) : '0.00'}</span>
                 </div>
               </div>
             </div>
@@ -637,8 +673,8 @@ const LiveScoringPage: React.FC = () => {
 
       {/* Status Messages for Completion */}
       {(() => {
-        const isFirstInnings = currentInnings.number === 1;
-        const isMatchCompleted = match.status === 'completed';
+        const isFirstInnings = activeInnings.number === 1;
+        const isMatchCompleted = activeMatch.status === 'completed';
 
         if (isMatchCompleted) {
           return (
@@ -649,13 +685,13 @@ const LiveScoringPage: React.FC = () => {
           );
         }
 
-        if (currentInnings.isCompleted) {
+        if (activeInnings.isCompleted) {
           let message = '';
-          if (currentInnings.totalWickets >= match.playersPerTeam - 1) {
+          if (activeInnings.totalWickets >= activeMatch.playersPerTeam - 1) {
             message = `${battingTeam?.name} All Out!`;
-          } else if (currentInnings.totalBalls >= match.overs * 6) {
-            message = `${match.overs} Overs Completed!`;
-          } else if (currentInnings.target && currentInnings.totalRuns >= currentInnings.target) {
+          } else if (activeInnings.totalBalls >= activeMatch.overs * 6) {
+            message = `${activeMatch.overs} Overs Completed!`;
+          } else if (activeInnings.target && activeInnings.totalRuns >= activeInnings.target) {
             message = `Target Achieved!`;
           }
 
@@ -688,7 +724,7 @@ const LiveScoringPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {[0, 1, 2, 3, 4, 6].map(runs => {
                 const currentBatsman = batsmen[selectedBatsmanIndex];
-                const isJoker = match.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === match.jokerName;
+                const isJoker = activeMatch.hasJoker && battingTeam?.players.find(p => p.id === currentBatsman.playerId)?.name === activeMatch.jokerName;
 
                 return (
                   <button
@@ -757,7 +793,7 @@ const LiveScoringPage: React.FC = () => {
             {/* Over/Match Complete Messages */}
             {isMatchComplete && (
               <div className="text-center py-3 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
-                🏆 Match Complete! All {match.overs} overs bowled.
+                🏆 Match Complete! All {activeMatch.overs} overs bowled.
               </div>
             )}
             {isOverComplete && !isMatchComplete && (
@@ -827,7 +863,7 @@ const LiveScoringPage: React.FC = () => {
             <h3 className="text-lg font-bold mb-4 text-center">Select New Bowler</h3>
             <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
               {getAllBowlersWithStatus().map(({ player, status, isDisabled }) => {
-                const isJoker = match.hasJoker && player.name === match.jokerName;
+                const isJoker = activeMatch.hasJoker && player.name === activeMatch.jokerName;
                 return (
                   <button
                     key={player.id}
@@ -868,7 +904,7 @@ const LiveScoringPage: React.FC = () => {
             <h3 className="text-lg font-bold mb-4 text-center">Select New Batsman</h3>
             <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
               {getAvailableBatsmen().map(player => {
-                const isJoker = match.hasJoker && player.name === match.jokerName;
+                const isJoker = activeMatch.hasJoker && player.name === activeMatch.jokerName;
                 return (
                   <button
                     key={player.id}
@@ -882,16 +918,6 @@ const LiveScoringPage: React.FC = () => {
                   </button>
                 );
               })}
-              {match.hasJoker && match.jokerName && !battingTeam?.players.some(p => p.name === match.jokerName) && (
-                <button
-                  onClick={() => handleBatsmanChange('joker')}
-                  className="w-full p-3 text-left bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border-2 border-yellow-200"
-                >
-                  <div className="font-medium text-yellow-800">
-                    🃏 {match.jokerName} (Joker)
-                  </div>
-                </button>
-              )}
             </div>
             <button
               onClick={() => setIsBatsmanModalOpen(false)}

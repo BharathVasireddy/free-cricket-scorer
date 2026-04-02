@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { getUserMatches, deleteMatch } from '../lib/matchService';
 import type { FirebaseMatch } from '../types';
 import { useMatchStore } from '../store/matchStore';
 import { Trophy, Search, Filter, Trash2 } from 'lucide-react';
+import { formatStoredDate, toDate, toUnixSeconds } from '../lib/dateUtils';
+import { getErrorCode, getErrorMessage } from '../lib/errorUtils';
 
 const MatchHistoryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,12 +20,7 @@ const MatchHistoryPage: React.FC = () => {
   const [deleteConfirmMatch, setDeleteConfirmMatch] = useState<(FirebaseMatch & { id: string }) | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadMatches();
-  }, [currentUser]);
-
-
-  const loadMatches = async (showLoader = true) => {
+  const loadMatches = useCallback(async (showLoader = true) => {
     if (showLoader) {
       setIsLoading(true);
     }
@@ -34,7 +31,9 @@ const MatchHistoryPage: React.FC = () => {
         setMatches([]);
         setIsLoading(false);
         return;
-      }      const userMatches = await getUserMatches(currentUser.uid);
+      }
+
+      const userMatches = await getUserMatches(currentUser.uid);
 
       // Deduplicate matches by ID to prevent React key warnings
       const uniqueMatches = userMatches.filter((match, index, self) =>
@@ -42,18 +41,23 @@ const MatchHistoryPage: React.FC = () => {
       );
 
       setMatches(uniqueMatches);
-    } catch (err: any) {
-      const errorMessage = err.code === 'permission-denied'
+    } catch (error) {
+      const errorCode = getErrorCode(error);
+      const errorMessage = errorCode === 'permission-denied'
         ? 'Access denied. Please check your permissions.'
-        : err.code === 'unavailable'
+        : errorCode === 'unavailable'
           ? 'Service temporarily unavailable. Please try again.'
-          : err.message || 'Failed to load matches. Please try again.';
+          : getErrorMessage(error, 'Failed to load matches. Please try again.');
 
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    void loadMatches();
+  }, [loadMatches]);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
@@ -71,46 +75,19 @@ const MatchHistoryPage: React.FC = () => {
 
       // Reload matches
       await loadMatches(false);
-    } catch (err: any) {      setError('Failed to delete match. Please try again.');
+    } catch {
+      setError('Failed to delete match. Please try again.');
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return 'Unknown date';
-
-    let date;
-    if (timestamp.seconds) {
-      // Firestore Timestamp
-      date = new Date(timestamp.seconds * 1000);
-    } else if (timestamp instanceof Date) {
-      date = timestamp;
-    } else {
-      date = new Date(timestamp);
-    }
-
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   // Extract unique months from matches for filter dropdown
   const availableMonths = useMemo(() => {
     const monthSet = new Set<string>();
     matches.forEach(match => {
-      if (match.createdAt) {
-        let date;
-        if ((match.createdAt as any).seconds) {
-          date = new Date((match.createdAt as any).seconds * 1000);
-        } else if (match.createdAt instanceof Date) {
-          date = match.createdAt;
-        } else {
-          date = new Date(match.createdAt);
-        }
+      const date = toDate(match.createdAt);
+      if (date) {
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         monthSet.add(monthKey);
       }
@@ -131,23 +108,14 @@ const MatchHistoryPage: React.FC = () => {
 
     // Sort by createdAt descending (most recent first)
     filtered.sort((a, b) => {
-      const dateA = (a.createdAt as any)?.seconds ? (a.createdAt as any).seconds : new Date(a.createdAt).getTime() / 1000;
-      const dateB = (b.createdAt as any)?.seconds ? (b.createdAt as any).seconds : new Date(b.createdAt).getTime() / 1000;
-      return dateB - dateA;
+      return toUnixSeconds(b.createdAt) - toUnixSeconds(a.createdAt);
     });
 
     // Filter by month
     if (selectedMonth !== 'all') {
       filtered = filtered.filter(match => {
-        if (!match.createdAt) return false;
-        let date;
-        if ((match.createdAt as any).seconds) {
-          date = new Date((match.createdAt as any).seconds * 1000);
-        } else if (match.createdAt instanceof Date) {
-          date = match.createdAt;
-        } else {
-          date = new Date(match.createdAt);
-        }
+        const date = toDate(match.createdAt);
+        if (!date) return false;
         const matchMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         return matchMonth === selectedMonth;
       });
@@ -213,7 +181,7 @@ const MatchHistoryPage: React.FC = () => {
               {match.teams[0].name} vs {match.teams[1].name}
             </h3>
           </div>
-          <p className="text-xs text-gray-500 mb-1">{formatDate(match.createdAt)}</p>
+          <p className="text-xs text-gray-500 mb-1">{formatStoredDate(match.createdAt)}</p>
           <div className="flex items-center space-x-2">
             <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${match.status === 'completed'
               ? 'bg-green-100 text-green-700'
@@ -529,7 +497,7 @@ const MatchHistoryPage: React.FC = () => {
                 {deleteConfirmMatch.teams[0].name} vs {deleteConfirmMatch.teams[1].name}
               </div>
               <div className="text-sm text-gray-600">
-                {formatDate(deleteConfirmMatch.createdAt)}
+                {formatStoredDate(deleteConfirmMatch.createdAt)}
               </div>
               <div className="text-sm text-gray-600 mt-1">
                 {getMatchScore(deleteConfirmMatch)}

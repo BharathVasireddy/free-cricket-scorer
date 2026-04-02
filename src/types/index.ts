@@ -1,7 +1,18 @@
+export type PlayerRole = 'batsman' | 'bowler' | 'allrounder';
+export type WicketType = 'out' | 'bowled' | 'caught' | 'lbw' | 'stumped' | 'runout' | 'hitwicket';
+
+export interface TimestampLike {
+  seconds: number;
+  nanoseconds?: number;
+  toDate?: () => Date;
+}
+
+export type StoredDate = Date | string | TimestampLike;
+
 export interface Player {
   id: string;
   name: string;
-  role?: 'batsman' | 'bowler' | 'allrounder';
+  role?: PlayerRole;
   phoneNumber?: string;
 }
 
@@ -15,7 +26,7 @@ export interface Ball {
   runs: number;
   extras: { type: 'wide' | 'noball' | 'bye' | 'legbye'; runs: number } | null;
   wicket: boolean;
-  wicketType?: 'bowled' | 'caught' | 'lbw' | 'stumped' | 'runout' | 'hitwicket';
+  wicketType?: WicketType;
   batsmanId?: string;
   bowlerId: string;
   overNumber: number;
@@ -57,7 +68,7 @@ export interface Match {
   currentInning: number;
   innings: Innings[];
   status: 'setup' | 'active' | 'completed';
-  createdAt: Date;
+  createdAt: StoredDate;
   createdBy?: string;
   tossWinner?: string;
   tossChoice?: 'bat' | 'bowl';
@@ -66,15 +77,15 @@ export interface Match {
   winner?: string;
   winMargin?: string;
   userId?: string;
+  matchCode?: string;
 }
 
 // Extended type for Firebase stored matches
 export interface FirebaseMatch extends Match {
-  matchCode?: string;
   userId?: string;
   isGuest?: boolean;
   isPublic?: boolean;
-  updatedAt?: any; // Firestore Timestamp
+  updatedAt?: StoredDate;
   format?: string;
 }
 
@@ -114,12 +125,12 @@ export interface SavedPlayer {
   id: string;
   name: string;
   phoneNumber?: string;
-  role?: 'batsman' | 'bowler' | 'allrounder';
-  createdAt: Date;
+  role?: PlayerRole;
+  createdAt: StoredDate;
 }
 
 export interface PlayerRoster {
   userId: string;
   players: SavedPlayer[];
-  updatedAt: Date;
-} 
+  updatedAt: StoredDate;
+}

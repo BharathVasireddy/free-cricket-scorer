@@ -21,7 +21,7 @@ const generateMatchCode = (): string => {
 const convertToFirebaseMatch = (match: Match, userId?: string, isGuest: boolean = false): FirebaseMatch => {
   return {
     ...match,
-    matchCode: (match as any).matchCode || generateMatchCode(),
+    matchCode: match.matchCode || generateMatchCode(),
     userId: userId || undefined,
     isGuest,
     isPublic: isGuest,
@@ -34,31 +34,30 @@ const convertToFirebaseMatch = (match: Match, userId?: string, isGuest: boolean 
 export const localStorageService = {
   // Save match locally
   async saveMatch(matchData: Match, userId?: string, isGuest: boolean = false): Promise<string> {
-    try {
-      const matchCode = generateMatchCode();
-      const firebaseMatch = convertToFirebaseMatch(matchData, userId, isGuest);
-      firebaseMatch.matchCode = matchCode;
+    const matchCode = generateMatchCode();
+    const firebaseMatch = convertToFirebaseMatch(matchData, userId, isGuest);
+    const storedMatch = { ...firebaseMatch, id: Date.now().toString(), matchCode };
 
-      // Save to general matches
-      const allMatches = this.getAllMatches();
-      allMatches.push({ ...firebaseMatch, id: Date.now().toString() });
-      localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));
+    // Save to general matches
+    const allMatches = this.getAllMatches();
+    allMatches.push(storedMatch);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));
 
-      // Save to user-specific matches if logged in
-      if (userId && !isGuest) {
-        const userMatches = this.getUserMatches(userId);
-        userMatches.push({ ...firebaseMatch, id: Date.now().toString() });
-        localStorage.setItem(`${LOCAL_STORAGE_KEYS.USER_MATCHES}_${userId}`, JSON.stringify(userMatches));
-      }
-
-      // Save to community matches if public
-      if (isGuest || firebaseMatch.isPublic) {
-        const communityMatches = this.getCommunityMatches();
-        communityMatches.push({ ...firebaseMatch, id: Date.now().toString() });
-        localStorage.setItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES, JSON.stringify(communityMatches));
-      }      return matchCode;
-    } catch (error) {      throw error;
+    // Save to user-specific matches if logged in
+    if (userId && !isGuest) {
+      const userMatches = this.getUserMatches(userId);
+      userMatches.push(storedMatch);
+      localStorage.setItem(`${LOCAL_STORAGE_KEYS.USER_MATCHES}_${userId}`, JSON.stringify(userMatches));
     }
+
+    // Save to community matches if public
+    if (isGuest || firebaseMatch.isPublic) {
+      const communityMatches = this.getCommunityMatches();
+      communityMatches.push(storedMatch);
+      localStorage.setItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES, JSON.stringify(communityMatches));
+    }
+
+    return matchCode;
   },
 
   // Create match locally
@@ -72,7 +71,8 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(`${LOCAL_STORAGE_KEYS.USER_MATCHES}_${userId}`);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {      return [];
+    } catch {
+      return [];
     }
   },
 
@@ -81,7 +81,8 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.COMMUNITY_MATCHES);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {      return [];
+    } catch {
+      return [];
     }
   },
 
@@ -90,7 +91,8 @@ export const localStorageService = {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.MATCHES);
       return stored ? JSON.parse(stored) : [];
-    } catch (error) {      return [];
+    } catch {
+      return [];
     }
   },
 
@@ -100,20 +102,19 @@ export const localStorageService = {
       const allMatches = this.getAllMatches();
       const match = allMatches.find(m => m.matchCode === matchCode);
       return match || null;
-    } catch (error) {      return null;
+    } catch {
+      return null;
     }
   },
 
   // Update match
   async updateMatch(matchId: string, matchData: Match): Promise<void> {
-    try {
-      const allMatches = this.getAllMatches();
-      const index = allMatches.findIndex(m => m.id === matchId);
+    const allMatches = this.getAllMatches();
+    const index = allMatches.findIndex(m => m.id === matchId);
 
-      if (index !== -1) {
-        allMatches[index] = { ...allMatches[index], ...matchData, updatedAt: new Date() };
-        localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));      }
-    } catch (error) {      throw error;
+    if (index !== -1) {
+      allMatches[index] = { ...allMatches[index], ...matchData, updatedAt: new Date() };
+      localStorage.setItem(LOCAL_STORAGE_KEYS.MATCHES, JSON.stringify(allMatches));
     }
   },
 
@@ -121,5 +122,6 @@ export const localStorageService = {
   clearAllData(): void {
     Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
-    });  }
-}; 
+    });
+  }
+};

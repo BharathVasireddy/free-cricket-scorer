@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { getErrorMessage } from '../lib/errorUtils';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,8 +39,8 @@ const AuthPage: React.FC = () => {
         await signUpWithEmail(email, password, displayName);
       }
       navigate('/dashboard');
-    } catch (error: any) {
-      setError(error.message || 'Authentication failed');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Authentication failed'));
     }
   };
 

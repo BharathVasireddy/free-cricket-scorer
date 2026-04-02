@@ -1,11 +1,40 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '../store/matchStore';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import type { Team, Player, SavedPlayer } from '../types';
 import { getUserRoster } from '../lib/playerRosterService';
 import PlayerSelectionModal from '../components/PlayerSelectionModal';
-import { Users } from 'lucide-react';
+import { CheckCircle2, Circle, Users } from 'lucide-react';
+
+interface SelectionIndicatorProps {
+  isSelected: boolean;
+  selectedClassName?: string;
+}
+
+const SelectionIndicator: React.FC<SelectionIndicatorProps> = ({ isSelected, selectedClassName = 'text-current' }) => {
+  if (isSelected) {
+    return <CheckCircle2 size={20} className={`shrink-0 ${selectedClassName}`} aria-hidden="true" />;
+  }
+
+  return <Circle size={20} className="shrink-0 text-gray-300" aria-hidden="true" />;
+};
+
+interface ToggleSwitchProps {
+  isOn: boolean;
+  onClassName: string;
+}
+
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ isOn, onClassName }) => (
+  <div
+    aria-hidden="true"
+    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${isOn ? onClassName : 'bg-gray-300'}`}
+  >
+    <span
+      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isOn ? 'translate-x-5' : 'translate-x-0'}`}
+    />
+  </div>
+);
 
 const MatchSetupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,7 +78,9 @@ const MatchSetupPage: React.FC = () => {
           if (roster) {
             setSavedPlayers(roster.players);
           }
-        } catch (error) {        }
+        } catch {
+          setSavedPlayers([]);
+        }
       }
     };
     fetchRoster();
@@ -102,6 +133,8 @@ const MatchSetupPage: React.FC = () => {
       team.players.every(player => player.name.trim() !== '')
     );
   };
+
+  const isJokerUnavailable = typeof playersPerTeam === 'number' && playersPerTeam >= 11;
 
   const handlePlayerNameChange = (teamIndex: number, playerIndex: number, name: string) => {
     // Convert player names to ALL UPPERCASE
@@ -179,7 +212,8 @@ const MatchSetupPage: React.FC = () => {
         // Ensure we have a valid user ID
         const userId = currentUser?.uid;
 
-        if (!userId) {          throw new Error('Authentication required. Please sign in to create a match.');
+        if (!userId) {
+          throw new Error('Authentication required. Please sign in to create a match.');
         }
 
         await createMatch({
@@ -196,7 +230,8 @@ const MatchSetupPage: React.FC = () => {
           status: 'active',
         }, userId);
         navigate('/toss');
-      } catch (error) {        setIsCreating(false);
+      } catch {
+        setIsCreating(false);
         // Handle error - maybe show a toast or alert
       }
     }
@@ -276,169 +311,174 @@ const MatchSetupPage: React.FC = () => {
             </div>
 
             {/* Special Rules */}
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded-xl border border-yellow-200">
-              <h2 className="text-base font-bold text-gray-900 mb-3 text-center">⚡ Special Rules</h2>
+            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-4 shadow-sm shadow-yellow-100/60">
+              <div className="mb-4 text-center">
+                <h2 className="text-lg font-bold text-gray-900">⚡ Special Rules</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Fine-tune how this match should be played
+                </p>
+              </div>
 
-              {/* Batting Format */}
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Batting Format
-                </label>
-                <div className="space-y-2">
+              <div className="space-y-5">
+                {/* Batting Format */}
+                <div>
+                  <div className="mb-2.5 px-1 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    Batting Format
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsSingleSide(false)}
+                      className={`w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all ${!isSingleSide
+                        ? 'border-cricket-blue bg-blue-50/80 shadow-sm shadow-blue-100/70'
+                        : 'border-gray-200 bg-white/95 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className={`flex items-center gap-2 font-semibold text-[15px] leading-5 ${!isSingleSide ? 'text-cricket-blue' : 'text-gray-900'}`}>
+                            <span className="text-base leading-none">👥</span>
+                            <span>Standard (Pair)</span>
+                          </div>
+                          <div className={`mt-1 text-sm leading-5 ${!isSingleSide ? 'text-blue-700/80' : 'text-gray-500'}`}>
+                            Two batsmen with strike rotation
+                          </div>
+                        </div>
+                        <SelectionIndicator isSelected={!isSingleSide} selectedClassName="text-cricket-blue" />
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSingleSide(true)}
+                      className={`w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all ${isSingleSide
+                        ? 'border-green-500 bg-green-50/80 shadow-sm shadow-green-100/70'
+                        : 'border-gray-200 bg-white/95 hover:border-gray-300'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className={`flex items-center gap-2 font-semibold text-[15px] leading-5 ${isSingleSide ? 'text-green-700' : 'text-gray-900'}`}>
+                            <span className="text-base leading-none">👤</span>
+                            <span>Single Batsman</span>
+                          </div>
+                          <div className={`mt-1 text-sm leading-5 ${isSingleSide ? 'text-green-700/80' : 'text-gray-500'}`}>
+                            One batsman at a time
+                          </div>
+                        </div>
+                        <SelectionIndicator isSelected={isSingleSide} selectedClassName="text-green-600" />
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Joker Rule */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => !isJokerUnavailable && setHasJoker(!hasJoker)}
+                      disabled={isJokerUnavailable}
+                      role="switch"
+                      aria-checked={hasJoker}
+                      className={`w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-300 ${hasJoker
+                        ? 'border-yellow-400 bg-yellow-50/90 shadow-sm shadow-yellow-100/70'
+                        : 'border-gray-200 bg-white/95 hover:border-gray-300'
+                        } ${isJokerUnavailable ? 'cursor-not-allowed opacity-60' : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className={`flex items-center gap-2 font-semibold text-[15px] leading-5 ${hasJoker ? 'text-yellow-800' : 'text-gray-900'}`}>
+                            <span className="text-base leading-none">🃏</span>
+                            <span>Joker Player</span>
+                          </div>
+                          <div className={`mt-1 text-sm leading-5 ${hasJoker ? 'text-yellow-800/80' : 'text-gray-500'}`}>
+                            Use one shared player across both teams
+                          </div>
+                        </div>
+                        <ToggleSwitch isOn={hasJoker} onClassName="bg-yellow-500" />
+                      </div>
+                    </button>
+
+                    {isJokerUnavailable && (
+                      <p className="mt-2 px-1 text-xs text-gray-500">
+                        Joker player is unavailable when there are 11 players per team.
+                      </p>
+                    )}
+
+                    {hasJoker && (
+                      <div className="mt-3 flex items-center gap-2.5">
+                        <input
+                          type="text"
+                          value={jokerName}
+                          onChange={(e) => {
+                            const uppercaseName = e.target.value.toUpperCase();
+                            setJokerName(uppercaseName);
+                          }}
+                          className="input-field h-11 flex-1 border-yellow-300 bg-white/90 focus:border-yellow-400 focus:ring-yellow-200"
+                          placeholder="Enter joker player name"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setHasJoker(false)}
+                          className="h-11 rounded-xl border border-gray-300 px-3 text-gray-600 transition-colors hover:bg-gray-50"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Wide Run Penalty */}
                   <button
-                    onClick={() => setIsSingleSide(false)}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${!isSingleSide
-                      ? 'border-cricket-blue bg-blue-50 text-cricket-blue'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    type="button"
+                    onClick={() => setWideRunPenalty(!wideRunPenalty)}
+                    role="switch"
+                    aria-checked={wideRunPenalty}
+                    className={`w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 ${wideRunPenalty
+                      ? 'border-blue-500 bg-blue-50/90 shadow-sm shadow-blue-100/70'
+                      : 'border-gray-200 bg-white/95 hover:border-gray-300'
                       }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <div className="font-bold text-sm">👥 Standard (Pair)</div>
-                        <div className="text-xs mt-0.5">Two batsmen, strike rotation</div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className={`flex items-center gap-2 font-semibold text-[15px] leading-5 ${wideRunPenalty ? 'text-blue-700' : 'text-gray-900'}`}>
+                          <span className="text-base leading-none">🎯</span>
+                          <span>Wide Ball Penalty</span>
+                        </div>
+                        <div className={`mt-1 text-sm leading-5 ${wideRunPenalty ? 'text-blue-700/80' : 'text-gray-500'}`}>
+                          Award 1 extra run for wides
+                        </div>
                       </div>
-                      <div className="text-lg">
-                        {!isSingleSide ? '✓' : '○'}
-                      </div>
+                      <ToggleSwitch isOn={wideRunPenalty} onClassName="bg-blue-500" />
                     </div>
                   </button>
 
+                  {/* No-Ball Run Penalty */}
                   <button
-                    onClick={() => setIsSingleSide(true)}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${isSingleSide
-                      ? 'border-green-500 bg-green-50 text-green-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    type="button"
+                    onClick={() => setNoBallRunPenalty(!noBallRunPenalty)}
+                    role="switch"
+                    aria-checked={noBallRunPenalty}
+                    className={`w-full rounded-2xl border-2 px-4 py-3.5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-300 ${noBallRunPenalty
+                      ? 'border-purple-500 bg-purple-50/90 shadow-sm shadow-purple-100/70'
+                      : 'border-gray-200 bg-white/95 hover:border-gray-300'
                       }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <div className="font-bold text-sm">👤 Single Batsman</div>
-                        <div className="text-xs mt-0.5">One batsman only</div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className={`flex items-center gap-2 font-semibold text-[15px] leading-5 ${noBallRunPenalty ? 'text-purple-700' : 'text-gray-900'}`}>
+                          <span className="text-base leading-none">⚡</span>
+                          <span>No-Ball Penalty</span>
+                        </div>
+                        <div className={`mt-1 text-sm leading-5 ${noBallRunPenalty ? 'text-purple-700/80' : 'text-gray-500'}`}>
+                          Award 1 extra run for no-balls
+                        </div>
                       </div>
-                      <div className="text-lg">
-                        {isSingleSide ? '✓' : '○'}
-                      </div>
+                      <ToggleSwitch isOn={noBallRunPenalty} onClassName="bg-purple-500" />
                     </div>
                   </button>
                 </div>
-              </div>
-
-              {/* Joker Rule */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Joker Player
-                </label>
-                <div className={(typeof playersPerTeam === 'number' && playersPerTeam >= 11) ? 'opacity-50 pointer-events-none' : ''}>
-                  <button
-                    onClick={() => (typeof playersPerTeam !== 'number' || playersPerTeam < 11) && setHasJoker(!hasJoker)}
-                    disabled={typeof playersPerTeam === 'number' && playersPerTeam >= 11}
-                    className={`w-full p-2.5 rounded-lg border-2 transition-all ${hasJoker
-                      ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <div className="font-bold text-sm flex items-center">
-                          <span className="mr-1.5">🃏</span>
-                          Enable Joker Player
-                        </div>
-                        <div className="text-xs mt-0.5 text-gray-600">
-                          Player for both teams
-                        </div>
-                      </div>
-                      <div className="text-lg">
-                        {hasJoker ? '✓' : '○'}
-                      </div>
-                    </div>
-                  </button>
-
-                  {(typeof playersPerTeam === 'number' && playersPerTeam >= 11) && (
-                    <p className="text-xs text-gray-500 mt-1.5 text-center">
-                      Not available with 11+ players
-                    </p>
-                  )}
-
-                  {hasJoker && (
-                    <div className="mt-2 flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={jokerName}
-                        onChange={(e) => {
-                          const uppercaseName = e.target.value.toUpperCase();
-                          setJokerName(uppercaseName);
-                        }}
-                        className="h-10 input-field flex-1 bg-white/80 border-yellow-300 focus:border-yellow-400 focus:ring-yellow-200"
-                        placeholder="Enter joker player name"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setHasJoker(false)}
-                        className="h-10 px-3 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Wide Run Penalty */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Wide Ball Penalty
-                </label>
-                <button
-                  onClick={() => setWideRunPenalty(!wideRunPenalty)}
-                  className={`w-full p-2.5 rounded-lg border-2 transition-all ${wideRunPenalty
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-left">
-                      <div className="font-bold text-sm flex items-center">
-                        <span className="mr-1.5">🎯</span>
-                        Wide = +1 Run Penalty
-                      </div>
-                      <div className="text-xs mt-0.5 text-gray-600">
-                        {wideRunPenalty ? 'Enabled (standard rules)' : 'Disabled (no penalty)'}
-                      </div>
-                    </div>
-                    <div className="text-lg">
-                      {wideRunPenalty ? '✓' : '○'}
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* No-Ball Run Penalty */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  No-Ball Penalty
-                </label>
-                <button
-                  onClick={() => setNoBallRunPenalty(!noBallRunPenalty)}
-                  className={`w-full p-2.5 rounded-lg border-2 transition-all ${noBallRunPenalty
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-left">
-                      <div className="font-bold text-sm flex items-center">
-                        <span className="mr-1.5">⚡</span>
-                        No-Ball = +1 Run Penalty
-                      </div>
-                      <div className="text-xs mt-0.5 text-gray-600">
-                        {noBallRunPenalty ? 'Enabled (standard rules)' : 'Disabled (no penalty)'}
-                      </div>
-                    </div>
-                    <div className="text-lg">
-                      {noBallRunPenalty ? '✓' : '○'}
-                    </div>
-                  </div>
-                </button>
               </div>
             </div>
 
